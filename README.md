@@ -4,13 +4,19 @@ Blast RF and IR signals from a Broadlink RM4 Pro using Homebridge. This plugin s
 pre-recorded hex signals to a known device IP — it does not learn signals or
 autodiscover the Broadlink device.
 
-## Current feature set (v0.1)
+## Current feature set (v0.2)
 
 - A "basic accessory" type exposed as a Light, Switch, Outlet, or Fan in Apple Home.
-- Power On/Off is sent as a hex signal to the RM4 Pro. Since a blaster has no
-  feedback, the on/off state shown in Home is an assumed state, not a real reading.
+- A dimmer light: one hex signal per discrete brightness level (plus a required 0%
+  signal). A live slider request is matched to the nearest configured level. If a
+  level is marked "max", the 0-100% slider is remapped onto the physical 0-max range
+  (e.g. max=50%: sliding to 100% sends the 50% signal, sliding to 50% sends the
+  nearest level to 25%). Turning on resolves an assumed brightness in this order:
+  last-known (if enabled) → default level → max level → highest configured level.
+- Power On/Off (and brightness) is sent as a hex signal to the RM4 Pro. Since a
+  blaster has no feedback, the state shown in Home is assumed, not a real reading.
 
-Not yet implemented: TV accessory, dimmer light.
+Not yet implemented: TV accessory.
 
 ## Installation
 
@@ -39,6 +45,19 @@ Example `config.json` platform block:
       "accessoryType": "fan",
       "powerOnCode": "2600..."
     }
+  ],
+  "dimmers": [
+    {
+      "name": "Bedroom Dimmer",
+      "zeroPercentCode": "2600...",
+      "useLastKnownBrightness": true,
+      "levels": [
+        { "level": 25, "code": "2600..." },
+        { "level": 50, "code": "2600...", "isMax": true },
+        { "level": 75, "code": "2600...", "isDefault": true },
+        { "level": 100, "code": "2600..." }
+      ]
+    }
   ]
 }
 ```
@@ -47,5 +66,9 @@ Example `config.json` platform block:
   doesn't specify its own `ip`.
 - `accessories[].powerOffCode`: optional; if omitted, the power-on signal is
   reused for both on and off (useful for toggle-only remotes).
+- `dimmers[].powerOnCode`: optional; if omitted, turning on just sends the
+  resolved brightness level's own signal.
+- `dimmers[].levels[].isDefault` / `isMax`: only one level of each should be
+  marked — if more than one is, the first one wins.
 
 Config can also be edited through `homebridge-config-ui-x`.

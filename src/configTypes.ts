@@ -10,7 +10,25 @@ export interface BasicAccessoryConfig {
   powerOffCode?: string;
 }
 
+export interface BrightnessLevelConfig {
+  level: number;
+  code: string;
+  isDefault?: boolean;
+  isMax?: boolean;
+}
+
+export interface DimmerAccessoryConfig {
+  name: string;
+  ip?: string;
+  powerOnCode?: string;
+  powerOffCode?: string;
+  useLastKnownBrightness?: boolean;
+  zeroPercentCode: string;
+  levels: BrightnessLevelConfig[];
+}
+
 export interface BlasterPlatformConfig extends PlatformConfig {
   defaultIp: string;
   accessories?: BasicAccessoryConfig[];
+  dimmers?: DimmerAccessoryConfig[];
 }
