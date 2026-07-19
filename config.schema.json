@@ -94,6 +94,34 @@
               "required": false,
               "description": "When turning on, restore the last brightness this light was set to instead of a default/max/highest level."
             },
+            "useDefaultBrightnessLevel": {
+              "title": "Set Default Brightness Level",
+              "type": "boolean",
+              "required": false,
+              "description": "Used when turning on if last-known brightness doesn't apply."
+            },
+            "defaultBrightnessLevel": {
+              "title": "Default Brightness Level (%)",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "required": false,
+              "description": "Only used when \"Set Default Brightness Level\" above is checked."
+            },
+            "useMaxBrightnessLevel": {
+              "title": "Set Max Brightness Level",
+              "type": "boolean",
+              "required": false,
+              "description": "Caps and remaps the 0-100% slider onto this percentage."
+            },
+            "maxBrightnessLevel": {
+              "title": "Max Brightness Level (%)",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "required": false,
+              "description": "Only used when \"Set Max Brightness Level\" above is checked."
+            },
             "zeroPercentCode": {
               "title": "Brightness 0% Signal",
               "type": "string",
@@ -118,18 +146,6 @@
                     "title": "Signal",
                     "type": "string",
                     "required": true
-                  },
-                  "isDefault": {
-                    "title": "Default Brightness",
-                    "type": "boolean",
-                    "required": false,
-                    "description": "Used when turning on if no last-known brightness applies. Only one level should be marked default."
-                  },
-                  "isMax": {
-                    "title": "Max Brightness",
-                    "type": "boolean",
-                    "required": false,
-                    "description": "Caps and remaps the 0-100% slider onto this level. Only one level should be marked max."
                   }
                 }
               }
@@ -167,6 +183,10 @@
         "dimmers[].powerOnCode",
         "dimmers[].powerOffCode",
         "dimmers[].useLastKnownBrightness",
+        "dimmers[].useDefaultBrightnessLevel",
+        "dimmers[].defaultBrightnessLevel",
+        "dimmers[].useMaxBrightnessLevel",
+        "dimmers[].maxBrightnessLevel",
         "dimmers[].zeroPercentCode",
         {
           "type": "array",
@@ -174,9 +194,7 @@
           "title": "Brightness Levels",
           "items": [
             "dimmers[].levels[].level",
-            "dimmers[].levels[].code",
-            "dimmers[].levels[].isDefault",
-            "dimmers[].levels[].isMax"
+            "dimmers[].levels[].code"
           ]
         }
       ]

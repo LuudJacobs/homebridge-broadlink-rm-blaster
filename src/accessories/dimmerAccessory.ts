@@ -16,8 +16,9 @@ function candidateLevels(config: DimmerAccessoryConfig): ResolvedLevel[] {
 }
 
 export function remapToPhysicalPercent(requestedPercent: number, config: DimmerAccessoryConfig): number {
-  const maxLevel = config.levels.find((level) => level.isMax);
-  const maxPercent = maxLevel ? maxLevel.level : 100;
+  const maxPercent = (config.useMaxBrightnessLevel && config.maxBrightnessLevel !== undefined)
+    ? config.maxBrightnessLevel
+    : 100;
   return (requestedPercent * maxPercent) / 100;
 }
 
@@ -35,19 +36,23 @@ export function resolveBrightnessCode(config: DimmerAccessoryConfig, requestedPe
   return findNearestLevel(config, remapToPhysicalPercent(requestedPercent, config));
 }
 
+// Default/max brightness are administrator-configured target percentages, not
+// necessarily one of the configured levels, so they're nearest-matched to find
+// a signal to send — but the *displayed* percent stays the configured target,
+// same as remapping does for a live slider request.
 export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: ResolvedLevel): ResolvedLevel {
   if (config.useLastKnownBrightness && lastKnown) {
     return lastKnown;
   }
 
-  const defaultLevel = config.levels.find((level) => level.isDefault);
-  if (defaultLevel) {
-    return { percent: defaultLevel.level, code: defaultLevel.code };
+  if (config.useDefaultBrightnessLevel && config.defaultBrightnessLevel !== undefined) {
+    const percent = config.defaultBrightnessLevel;
+    return { percent, code: findNearestLevel(config, percent).code };
   }
 
-  const maxLevel = config.levels.find((level) => level.isMax);
-  if (maxLevel) {
-    return { percent: maxLevel.level, code: maxLevel.code };
+  if (config.useMaxBrightnessLevel && config.maxBrightnessLevel !== undefined) {
+    const percent = config.maxBrightnessLevel;
+    return { percent, code: findNearestLevel(config, percent).code };
   }
 
   const highest = config.levels.reduce((a, b) => (b.level > a.level ? b : a));
