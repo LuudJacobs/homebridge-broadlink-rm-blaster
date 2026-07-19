@@ -4,7 +4,7 @@ Blast RF and IR signals from a Broadlink RM4 Pro using Homebridge. This plugin s
 pre-recorded hex signals to a known device IP — it does not learn signals or
 autodiscover the Broadlink device.
 
-## Current feature set (v0.2.2)
+## Current feature set (v0.2.3)
 
 - A "basic accessory" type exposed as a Light, Switch, Outlet, or Fan in Apple Home.
 - A dimmer light: one hex signal per discrete brightness level (plus a required 0%
@@ -13,7 +13,9 @@ autodiscover the Broadlink device.
   range (e.g. max=50%: sliding to 100% sends the 50% signal, sliding to 50% sends the
   nearest level to 25%). Turning on resolves an assumed brightness in this order:
   last-known (if enabled) → configured default percentage → configured max
-  percentage → highest configured level.
+  percentage → highest configured level. The default percentage is on the same
+  logical 0-100 scale as the slider, so it's remapped through the configured max
+  too — it can never physically exceed the max cap.
 - Power On/Off (and brightness) is sent as a hex signal to the RM4 Pro. Since a
   blaster has no feedback, the state shown in Home is assumed, not a real reading.
 

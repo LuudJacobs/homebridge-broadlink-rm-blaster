@@ -66,6 +66,19 @@ test('resolvePowerOnLevel keeps the configured target percent even when it needs
   assert.deepEqual(resolvePowerOnLevel(config), { percent: 80, code: 'seventy-five-code' });
 });
 
+test('resolvePowerOnLevel remaps the default percentage through the configured max (todo worked example)', () => {
+  // default=100 (logical) with max=50 -> physical 50 -> nearest is the 50% level itself.
+  // Without the remap this would incorrectly resolve to 'hundred-code'.
+  const config: DimmerAccessoryConfig = { ...withMax50, useDefaultBrightnessLevel: true, defaultBrightnessLevel: 100 };
+  assert.deepEqual(resolvePowerOnLevel(config), { percent: 100, code: 'fifty-code' });
+});
+
+test('resolvePowerOnLevel nearest-matches the remapped default when it lands between configured levels', () => {
+  // default=50 (logical) with max=50 -> physical 25 -> nearest is the 25% level
+  const config: DimmerAccessoryConfig = { ...withMax50, useDefaultBrightnessLevel: true, defaultBrightnessLevel: 50 };
+  assert.deepEqual(resolvePowerOnLevel(config), { percent: 50, code: 'twenty-five-code' });
+});
+
 test('resolvePowerOnLevel falls back to the configured max level when no default is set', () => {
   assert.deepEqual(resolvePowerOnLevel(withMax50), { percent: 50, code: 'fifty-code' });
 });
