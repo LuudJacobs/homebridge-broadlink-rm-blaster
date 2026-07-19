@@ -29,17 +29,19 @@ export function findNearestLevel(config: DimmerAccessoryConfig, physicalPercent:
   );
 }
 
-// Remapping only applies to a live slider request — it translates the user's
-// logical 0-100 ask into a physical percent before matching it to a configured
-// signal. It intentionally does not apply to resolvePowerOnLevel below.
+// Translates a logical 0-100 request into a physical percent (via the
+// configured max, if any) before matching it to a configured signal. Used for
+// live slider requests and for the "default brightness" power-on tier below,
+// since both are logical values on the same 0-100 scale.
 export function resolveBrightnessCode(config: DimmerAccessoryConfig, requestedPercent: number): ResolvedLevel {
   return findNearestLevel(config, remapToPhysicalPercent(requestedPercent, config));
 }
 
-// Default/max brightness are administrator-configured target percentages, not
-// necessarily one of the configured levels, so they're nearest-matched to find
-// a signal to send — but the *displayed* percent stays the configured target,
-// same as remapping does for a live slider request.
+// Default brightness is a logical 0-100 target, same scale as a live slider
+// request, so it goes through the same remap-then-nearest-match pipeline -
+// otherwise a configured default could physically exceed the configured max,
+// defeating the point of the cap. Max brightness itself is the ceiling, so it
+// resolves directly rather than being remapped through itself.
 export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: ResolvedLevel): ResolvedLevel {
   if (config.useLastKnownBrightness && lastKnown) {
     return lastKnown;
@@ -47,7 +49,7 @@ export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: R
 
   if (config.useDefaultBrightnessLevel && config.defaultBrightnessLevel !== undefined) {
     const percent = config.defaultBrightnessLevel;
-    return { percent, code: findNearestLevel(config, percent).code };
+    return { percent, code: resolveBrightnessCode(config, percent).code };
   }
 
   if (config.useMaxBrightnessLevel && config.maxBrightnessLevel !== undefined) {
