@@ -105,8 +105,11 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 100,
+              "default": 50,
               "required": false,
-              "description": "Only used when \"Set Default Brightness Level\" above is checked."
+              "condition": {
+                "functionBody": "return model.dimmers && model.dimmers[arrayIndices] && model.dimmers[arrayIndices].useDefaultBrightnessLevel === true;"
+              }
             },
             "useMaxBrightnessLevel": {
               "title": "Set Max Brightness Level",
@@ -119,8 +122,11 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 100,
+              "default": 100,
               "required": false,
-              "description": "Only used when \"Set Max Brightness Level\" above is checked."
+              "condition": {
+                "functionBody": "return model.dimmers && model.dimmers[arrayIndices] && model.dimmers[arrayIndices].useMaxBrightnessLevel === true;"
+              }
             },
             "zeroPercentCode": {
               "title": "Brightness 0% Signal",

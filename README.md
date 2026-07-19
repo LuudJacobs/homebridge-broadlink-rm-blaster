@@ -4,7 +4,7 @@ Blast RF and IR signals from a Broadlink RM4 Pro using Homebridge. This plugin s
 pre-recorded hex signals to a known device IP — it does not learn signals or
 autodiscover the Broadlink device.
 
-## Current feature set (v0.2.1)
+## Current feature set (v0.2.2)
 
 - A "basic accessory" type exposed as a Light, Switch, Outlet, or Fan in Apple Home.
 - A dimmer light: one hex signal per discrete brightness level (plus a required 0%
