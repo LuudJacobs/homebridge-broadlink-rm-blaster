@@ -1,0 +1,82 @@
+{
+  "pluginAlias": "BroadlinkRM4ProBlaster",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Blasts pre-recorded IR/RF hex signals via a Broadlink RM4 Pro. Signals must be captured elsewhere (this plugin does not learn or discover devices).",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "defaultIp": {
+        "title": "Default RM4 Pro IP Address",
+        "type": "string",
+        "format": "ipv4",
+        "required": true,
+        "description": "Used by any accessory below that doesn't specify its own IP address."
+      },
+      "accessories": {
+        "title": "Accessories",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true
+            },
+            "ip": {
+              "title": "IP Address",
+              "type": "string",
+              "format": "ipv4",
+              "required": false,
+              "description": "Overrides the default IP address above. Leave empty to use the default."
+            },
+            "accessoryType": {
+              "title": "Accessory Type",
+              "type": "string",
+              "required": true,
+              "default": "light",
+              "oneOf": [
+                { "title": "Light", "enum": ["light"] },
+                { "title": "Switch", "enum": ["switch"] },
+                { "title": "Outlet", "enum": ["outlet"] },
+                { "title": "Fan", "enum": ["fan"] }
+              ]
+            },
+            "powerOnCode": {
+              "title": "Power On Signal",
+              "type": "string",
+              "required": true,
+              "description": "Hex code sent to turn the accessory on."
+            },
+            "powerOffCode": {
+              "title": "Power Off Signal",
+              "type": "string",
+              "required": false,
+              "description": "Hex code sent to turn the accessory off. Leave empty to reuse the Power On signal (useful for toggle-only remotes)."
+            }
+          }
+        }
+      }
+    }
+  },
+  "layout": [
+    {
+      "type": "fieldset",
+      "title": "General",
+      "items": ["defaultIp"]
+    },
+    {
+      "type": "array",
+      "key": "accessories",
+      "title": "Accessories",
+      "items": [
+        "accessories[].name",
+        "accessories[].ip",
+        "accessories[].accessoryType",
+        "accessories[].powerOnCode",
+        "accessories[].powerOffCode"
+      ]
+    }
+  ]
+}
