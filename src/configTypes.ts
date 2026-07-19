@@ -13,8 +13,6 @@ export interface BasicAccessoryConfig {
 export interface BrightnessLevelConfig {
   level: number;
   code: string;
-  isDefault?: boolean;
-  isMax?: boolean;
 }
 
 export interface DimmerAccessoryConfig {
@@ -23,6 +21,10 @@ export interface DimmerAccessoryConfig {
   powerOnCode?: string;
   powerOffCode?: string;
   useLastKnownBrightness?: boolean;
+  useDefaultBrightnessLevel?: boolean;
+  defaultBrightnessLevel?: number;
+  useMaxBrightnessLevel?: boolean;
+  maxBrightnessLevel?: number;
   zeroPercentCode: string;
   levels: BrightnessLevelConfig[];
 }
