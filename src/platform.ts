@@ -12,6 +12,7 @@ import { BroadlinkClient } from './broadlinkClient';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
+import { DimmerAccessory } from './accessories/dimmerAccessory';
 
 export class BroadlinkRM4ProBlasterPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
@@ -19,6 +20,8 @@ export class BroadlinkRM4ProBlasterPlatform implements DynamicPlatformPlugin {
 
   public readonly accessories: PlatformAccessory[] = [];
   public readonly broadlinkClient: BroadlinkClient;
+
+  private readonly activeUuids = new Set<string>();
 
   constructor(
     public readonly log: Logger,
@@ -40,47 +43,74 @@ export class BroadlinkRM4ProBlasterPlatform implements DynamicPlatformPlugin {
 
   private discoverAccessories(): void {
     const config = this.config as BlasterPlatformConfig;
-    const configuredAccessories = config.accessories ?? [];
+    this.activeUuids.clear();
 
-    const activeUuids = new Set<string>();
-
-    for (const accessoryConfig of configuredAccessories) {
-      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:${accessoryConfig.name}`);
-      activeUuids.add(uuid);
-
+    for (const accessoryConfig of config.accessories ?? []) {
       const ip = accessoryConfig.ip ?? config.defaultIp;
       if (!ip) {
         this.log.warn(`Skipping accessory "${accessoryConfig.name}": no IP address configured (set "ip" or "defaultIp")`);
         continue;
       }
 
-      const existingAccessory = this.accessories.find((accessory) => accessory.UUID === uuid);
-
-      if (existingAccessory) {
-        existingAccessory.context.accessoryConfig = accessoryConfig;
-        this.api.updatePlatformAccessories([existingAccessory]);
-        new BasicAccessory(this, existingAccessory, accessoryConfig, ip);
-      } else {
-        this.log.info(`Adding accessory: ${accessoryConfig.name}`);
-        const accessory = new this.api.platformAccessory(accessoryConfig.name, uuid);
+      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:${accessoryConfig.name}`);
+      this.upsertAccessory(uuid, accessoryConfig.name, (accessory) => {
         accessory.context.accessoryConfig = accessoryConfig;
         new BasicAccessory(this, accessory, accessoryConfig, ip);
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-        this.accessories.push(accessory);
-      }
+      });
     }
 
-    const staleAccessories = this.accessories.filter((accessory) => !activeUuids.has(accessory.UUID));
-    if (staleAccessories.length > 0) {
-      for (const accessory of staleAccessories) {
-        this.log.info(`Removing stale accessory: ${accessory.displayName}`);
+    for (const dimmerConfig of config.dimmers ?? []) {
+      const ip = dimmerConfig.ip ?? config.defaultIp;
+      if (!ip) {
+        this.log.warn(`Skipping dimmer "${dimmerConfig.name}": no IP address configured (set "ip" or "defaultIp")`);
+        continue;
       }
-      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, staleAccessories);
-      for (const accessory of staleAccessories) {
-        const index = this.accessories.indexOf(accessory);
-        if (index !== -1) {
-          this.accessories.splice(index, 1);
-        }
+      if (dimmerConfig.levels.length === 0) {
+        this.log.warn(`Skipping dimmer "${dimmerConfig.name}": no brightness levels configured`);
+        continue;
+      }
+
+      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:dimmer:${dimmerConfig.name}`);
+      this.upsertAccessory(uuid, dimmerConfig.name, (accessory) => {
+        accessory.context.dimmerConfig = dimmerConfig;
+        new DimmerAccessory(this, accessory, dimmerConfig, ip);
+      });
+    }
+
+    this.pruneStaleAccessories();
+  }
+
+  private upsertAccessory(uuid: string, name: string, setup: (accessory: PlatformAccessory) => void): void {
+    this.activeUuids.add(uuid);
+
+    const existingAccessory = this.accessories.find((accessory) => accessory.UUID === uuid);
+
+    if (existingAccessory) {
+      setup(existingAccessory);
+      this.api.updatePlatformAccessories([existingAccessory]);
+    } else {
+      this.log.info(`Adding accessory: ${name}`);
+      const accessory = new this.api.platformAccessory(name, uuid);
+      setup(accessory);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+      this.accessories.push(accessory);
+    }
+  }
+
+  private pruneStaleAccessories(): void {
+    const staleAccessories = this.accessories.filter((accessory) => !this.activeUuids.has(accessory.UUID));
+    if (staleAccessories.length === 0) {
+      return;
+    }
+
+    for (const accessory of staleAccessories) {
+      this.log.info(`Removing stale accessory: ${accessory.displayName}`);
+    }
+    this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, staleAccessories);
+    for (const accessory of staleAccessories) {
+      const index = this.accessories.indexOf(accessory);
+      if (index !== -1) {
+        this.accessories.splice(index, 1);
       }
     }
   }
