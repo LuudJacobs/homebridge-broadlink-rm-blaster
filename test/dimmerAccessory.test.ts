@@ -6,6 +6,7 @@ import {
   remapToPhysicalPercent,
   resolveBrightnessCode,
   resolvePowerOnLevel,
+  resolveStepTarget,
 } from '../src/accessories/dimmerAccessory';
 import type { DimmerAccessoryConfig } from '../src/configTypes';
 
@@ -85,4 +86,26 @@ test('resolvePowerOnLevel falls back to the configured max level when no default
 
 test('resolvePowerOnLevel falls back to the highest level when no default or max is set', () => {
   assert.deepEqual(resolvePowerOnLevel(baseConfig), { percent: 100, code: 'hundred-code' });
+});
+
+test('resolveStepTarget: up while off (0%) lands on the lowest configured level', () => {
+  assert.deepEqual(resolveStepTarget(baseConfig, 0, 'up'), { percent: 25, code: 'twenty-five-code' });
+});
+
+test('resolveStepTarget: down while off (0%) has nowhere to go', () => {
+  assert.equal(resolveStepTarget(baseConfig, 0, 'down'), undefined);
+});
+
+test('resolveStepTarget: down from the lowest configured level goes to 0% (off)', () => {
+  assert.deepEqual(resolveStepTarget(baseConfig, 25, 'down'), { percent: 0, code: 'zero-code' });
+});
+
+test('resolveStepTarget: steps to the adjacent configured level in the middle of the list', () => {
+  assert.deepEqual(resolveStepTarget(baseConfig, 50, 'up'), { percent: 75, code: 'seventy-five-code' });
+  assert.deepEqual(resolveStepTarget(baseConfig, 50, 'down'), { percent: 25, code: 'twenty-five-code' });
+});
+
+test('resolveStepTarget: up respects the configured max, refusing to step past it', () => {
+  // withMax50 candidates are capped to [0, 25, 50] - already at the capped ceiling
+  assert.equal(resolveStepTarget(withMax50, 50, 'up'), undefined);
 });
