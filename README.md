@@ -94,13 +94,3 @@ Example `config.json` platform block:
   rapid updates; the actual signal only sends after this long of no movement.
 
 Config can also be edited through `homebridge-config-ui-x`.
-
-## Debugging
-
-To send a single hex code straight to your RM, bypassing Homebridge/HomeKit
-entirely (useful for isolating whether a signal behaves oddly on the device
-itself vs. through the plugin):
-
-```bash
-npm run send-code -- <ip> <hexCode>
-```
