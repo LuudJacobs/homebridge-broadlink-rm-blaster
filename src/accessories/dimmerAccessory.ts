@@ -97,6 +97,17 @@ export class DimmerAccessory {
   // be reverted without a config change if it doesn't help.
   private brightnessActionId = 0;
 
+  // Every send() call for this dimmer is now a level-setting signal (0%, a
+  // configured level, or 100% - powerOnCode/powerOffCode are no longer sent
+  // as of v0.7.8), so tracking the last one actually sent lets send() skip a
+  // no-op resend outright. This specifically targets a debounce edge case:
+  // if two onSet(Brightness) calls that both nearest-match to the same
+  // signal arrive further apart than debounceSeconds, each completes its
+  // own independent debounce cycle and both would otherwise fire - sending
+  // the identical signal to the receiver twice, which earlier testing
+  // showed can push it into unwanted auto-dim/cycling behavior.
+  private lastSentCode?: string;
+
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
@@ -205,8 +216,13 @@ export class DimmerAccessory {
   }
 
   private async send(code: string, signalName: string): Promise<void> {
+    if (code === this.lastSentCode) {
+      return;
+    }
+
     try {
       await this.platform.broadlinkClient.sendCode(this.ip, code);
+      this.lastSentCode = code;
       this.platform.log.info(`Sent ${signalName} to ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
