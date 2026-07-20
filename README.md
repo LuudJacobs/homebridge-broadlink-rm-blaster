@@ -16,6 +16,8 @@ remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-bro
 - Basic accessories (Light, Switch, Outlet, Fan) — power on/off via a hex signal.
 - Dimmer lights — one hex signal per discrete brightness level, with optional
   default/max brightness and "use last known brightness" on power on.
+- TVs — power on/off plus a usable remote (arrows, select, back, exit, info,
+  volume, mute) in the iOS Remote app, all optional besides power.
 - Temperature/humidity sensor — polls the RM every 60 seconds, on by default.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
@@ -71,6 +73,17 @@ Example `config.json` platform block:
         { "level": 75, "code": "2600..." }
       ]
     }
+  ],
+  "tvs": [
+    {
+      "name": "Living Room TV",
+      "powerOnCode": "2600...",
+      "volumeUpCode": "2600...",
+      "volumeDownCode": "2600...",
+      "muteCode": "2600...",
+      "arrowUpCode": "2600...",
+      "selectCode": "2600..."
+    }
   ]
 }
 ```
@@ -92,6 +105,13 @@ Example `config.json` platform block:
   uncapped 100% signal, always reachable regardless of any max brightness cap.
 - `dimmers[].debounceSeconds`: defaults to `0.5`. A slider drag fires many
   rapid updates; the actual signal only sends after this long of no movement.
+- `tvs[].powerOnCode` is the only required TV field — everything else
+  (`powerOffCode`, `volumeUpCode`/`volumeDownCode`, `muteCode`,
+  `arrowUpCode`/`arrowDownCode`/`arrowLeftCode`/`arrowRightCode`,
+  `selectCode`, `infoCode`, `backCode`, `exitCode`) is optional; pressing a
+  remote button with no signal configured for it just does nothing.
+  `muteCode` is sent as-is for both muting and unmuting, since most remotes
+  use a single toggle button rather than distinct on/off signals.
 
 Config can also be edited through `homebridge-config-ui-x`.
 

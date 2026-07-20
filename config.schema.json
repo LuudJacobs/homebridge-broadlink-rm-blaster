@@ -189,6 +189,95 @@
             }
           }
         }
+      },
+      "tvs": {
+        "title": "TVs",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true
+            },
+            "ip": {
+              "title": "IP Address",
+              "type": "string",
+              "format": "ipv4",
+              "required": false,
+              "description": "Overrides the default IP address above. Leave empty to use the default."
+            },
+            "powerOnCode": {
+              "title": "Power On Signal",
+              "type": "string",
+              "required": true,
+              "description": "Hex code sent to turn the TV on."
+            },
+            "powerOffCode": {
+              "title": "Power Off Signal",
+              "type": "string",
+              "required": false,
+              "description": "Hex code sent to turn the TV off. Leave empty to reuse the Power On signal (useful for toggle-only remotes)."
+            },
+            "volumeUpCode": {
+              "title": "Volume Up Signal",
+              "type": "string",
+              "required": false
+            },
+            "volumeDownCode": {
+              "title": "Volume Down Signal",
+              "type": "string",
+              "required": false
+            },
+            "muteCode": {
+              "title": "Mute Signal",
+              "type": "string",
+              "required": false,
+              "description": "Most remotes use a single toggle button for mute - the same signal is sent whether muting or unmuting."
+            },
+            "arrowUpCode": {
+              "title": "Arrow Up Signal",
+              "type": "string",
+              "required": false
+            },
+            "arrowDownCode": {
+              "title": "Arrow Down Signal",
+              "type": "string",
+              "required": false
+            },
+            "arrowLeftCode": {
+              "title": "Arrow Left Signal",
+              "type": "string",
+              "required": false
+            },
+            "arrowRightCode": {
+              "title": "Arrow Right Signal",
+              "type": "string",
+              "required": false
+            },
+            "selectCode": {
+              "title": "Select Signal",
+              "type": "string",
+              "required": false
+            },
+            "infoCode": {
+              "title": "Info Signal",
+              "type": "string",
+              "required": false
+            },
+            "backCode": {
+              "title": "Back Signal",
+              "type": "string",
+              "required": false
+            },
+            "exitCode": {
+              "title": "Exit Signal",
+              "type": "string",
+              "required": false
+            }
+          }
+        }
       }
     }
   },
@@ -236,6 +325,28 @@
             "dimmers[].levels[].code"
           ]
         }
+      ]
+    },
+    {
+      "type": "array",
+      "key": "tvs",
+      "title": "TVs",
+      "items": [
+        "tvs[].name",
+        "tvs[].ip",
+        "tvs[].powerOnCode",
+        "tvs[].powerOffCode",
+        "tvs[].volumeUpCode",
+        "tvs[].volumeDownCode",
+        "tvs[].muteCode",
+        "tvs[].arrowUpCode",
+        "tvs[].arrowDownCode",
+        "tvs[].arrowLeftCode",
+        "tvs[].arrowRightCode",
+        "tvs[].selectCode",
+        "tvs[].infoCode",
+        "tvs[].backCode",
+        "tvs[].exitCode"
       ]
     }
   ]
