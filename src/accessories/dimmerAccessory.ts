@@ -80,36 +80,21 @@ export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: R
 export class DimmerAccessory {
   private brightnessDebounceTimer?: NodeJS.Timeout;
 
-  // Bumped by any explicit brightness/off action (setBrightness, turnOff).
-  // setOn's own resolved default/last-known/max level is only a guess made
-  // in the absence of a real request - if the user actually turned on by
-  // dragging the slider itself (HomeKit sends On=true and Brightness=X for
-  // the same gesture), setBrightness's onSet can fire while setOn's "Power
-  // On" send is still in flight, and setOn must recognize its guess has been
-  // superseded rather than blast/display it on top of the real request.
+  // Bumped by any explicit brightness/off action (setBrightness, turnOff), to
+  // let setOn recognize when its own resolved level has been superseded by a
+  // real request that arrived while its send was still in flight. See the
+  // v0.7.3-v0.7.7 history in project memory for why this exists and why it's
+  // deliberately narrow (only the async gap of setOn's own send) rather than
+  // a longer deferred window.
   //
-  // This only guards the async gap of the Power On send itself (tens of
-  // ms) - deliberately narrow. A wider, debounce-length delay before
-  // sending the guessed level was tried (v0.7.4) and had to be reverted:
-  // real-hardware testing showed it introduced a gap between Power On and
-  // the level signal that the physical (KAKU-style RF) dimmer no longer
-  // recognized as one combined "turn on to level X" gesture, causing the
-  // receiver to become unresponsive after a few actions. Sending both
-  // signals back-to-back, immediately, is what real-hardware testing has
-  // shown to actually work reliably - this guard only trims the display-sync
-  // edge case on top of that, it doesn't relax the immediacy.
-  //
-  // Known trade-off, also tried and reverted (v0.7.6): removing this guard
-  // entirely makes the resolved default/last-known/max level always apply on
-  // a plain toggle, since the Home app is documented to frequently send a
-  // spurious Brightness:100 alongside On=true independent of user intent
-  // (homebridge/homebridge#2850) - but that means BOTH signals go out on
-  // every such toggle (the resolved default here, plus whatever
-  // setBrightness's own debounce later sends for that spurious write),
-  // which is exactly the kind of repeated/rapid signal burst that made the
-  // physical dimmer stop responding. Keeping this guard trades "the
-  // configured default doesn't always win against HomeKit's own quirk" for
-  // "the device doesn't lock up" - the latter matters more.
+  // As of this version, setOn/turnOff no longer send the dedicated
+  // powerOnCode/powerOffCode signals at all - only the resolved brightness
+  // level (on) or zeroPercentCode (off), since a level signal alone has been
+  // confirmed to already power the device on. This is an experiment to see
+  // whether dropping the extra dedicated signal reduces the receiver
+  // confusion/unresponsiveness seen in earlier testing. powerOnCode/
+  // powerOffCode remain required config fields (unused for now) so this can
+  // be reverted without a config change if it doesn't help.
   private brightnessActionId = 0;
 
   constructor(
@@ -151,7 +136,7 @@ export class DimmerAccessory {
   private async turnOff(): Promise<void> {
     this.clearBrightnessDebounce();
     this.brightnessActionId++;
-    await this.send(this.config.powerOffCode, 'Power Off');
+    await this.send(this.config.zeroPercentCode, 'Power Off');
     this.accessory.context.on = false;
   }
 
@@ -171,22 +156,18 @@ export class DimmerAccessory {
     const nearestPercent = findLevelByCode(this.config, resolved.code)?.percent ?? resolved.percent;
     const myActionId = ++this.brightnessActionId;
 
-    await this.send(this.config.powerOnCode, 'Power On');
+    // The resolved level's own signal is the only thing sent to turn the
+    // light on - a dedicated powerOnCode is no longer sent (see the
+    // comment on brightnessActionId).
+    await this.send(resolved.code, `Brightness ${nearestPercent}% (requested: ${resolved.percent}% of ${effectiveMax}%)`);
     this.accessory.context.on = true;
 
     if (this.brightnessActionId !== myActionId) {
       // A real Brightness request (e.g. dragging the slider straight up
-      // from off) arrived while "Power On" was still in flight and has
-      // already taken over - don't blast or display this guessed level on
-      // top of it.
+      // from off) arrived while the send above was still in flight and has
+      // already taken over - don't display this guessed level on top of it.
       return;
     }
-
-    // Power On only turns the light on - it doesn't carry a brightness level,
-    // so the resolved level's own signal has to be sent right away too, for
-    // the device to actually reach it. This has to stay immediate/back-to-back
-    // with Power On, not deferred - see the comment on brightnessActionId.
-    await this.send(resolved.code, `Brightness ${nearestPercent}% (requested: ${resolved.percent}% of ${effectiveMax}%)`);
 
     this.accessory.context.brightnessPercent = resolved.percent;
     this.accessory.context.lastKnownLevel = resolved;
