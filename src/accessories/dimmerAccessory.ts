@@ -1,0 +1,233 @@
+import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
+
+import type { BroadlinkRMBlasterPlatform } from '../platform';
+import type { DimmerAccessoryConfig } from '../configTypes';
+
+export interface ResolvedLevel {
+  percent: number;
+  code: string;
+}
+
+const DEFAULT_DEBOUNCE_SECONDS = 0.5;
+
+function candidateLevels(config: DimmerAccessoryConfig): ResolvedLevel[] {
+  return [
+    { percent: 0, code: config.zeroPercentCode },
+    ...config.levels.map((level) => ({ percent: level.level, code: level.code })),
+    { percent: 100, code: config.hundredPercentCode },
+  ];
+}
+
+export function getEffectiveMaxPercent(config: DimmerAccessoryConfig): number {
+  return (config.useMaxBrightnessLevel && config.maxBrightnessLevel !== undefined)
+    ? config.maxBrightnessLevel
+    : 100;
+}
+
+export function remapToPhysicalPercent(requestedPercent: number, config: DimmerAccessoryConfig): number {
+  return (requestedPercent * getEffectiveMaxPercent(config)) / 100;
+}
+
+export function findNearestLevel(config: DimmerAccessoryConfig, physicalPercent: number): ResolvedLevel {
+  const candidates = candidateLevels(config);
+  return candidates.reduce((closest, candidate) =>
+    Math.abs(candidate.percent - physicalPercent) < Math.abs(closest.percent - physicalPercent) ? candidate : closest,
+  );
+}
+
+// resolvePowerOnLevel's own `percent` is deliberately the admin's configured
+// target, not the actual signal's percent (see its comment below) - this
+// looks the real candidate back up by its code so logs can show what was
+// actually sent, the same way setBrightness's log already does.
+function findLevelByCode(config: DimmerAccessoryConfig, code: string): ResolvedLevel | undefined {
+  return candidateLevels(config).find((level) => level.code === code);
+}
+
+// Translates a logical 0-100 request into a physical percent (via the
+// configured max, if any) before matching it to a configured signal. Used for
+// live slider requests and for the "default brightness" power-on tier below,
+// since both are logical values on the same 0-100 scale.
+export function resolveBrightnessCode(config: DimmerAccessoryConfig, requestedPercent: number): ResolvedLevel {
+  return findNearestLevel(config, remapToPhysicalPercent(requestedPercent, config));
+}
+
+// Default brightness is a logical 0-100 target, same scale as a live slider
+// request, so it goes through the same remap-then-nearest-match pipeline -
+// otherwise a configured default could physically exceed the configured max,
+// defeating the point of the cap. Max brightness itself is the ceiling, so it
+// resolves directly rather than being remapped through itself.
+export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: ResolvedLevel): ResolvedLevel {
+  if (config.useLastKnownBrightness && lastKnown) {
+    return lastKnown;
+  }
+
+  if (config.useDefaultBrightnessLevel && config.defaultBrightnessLevel !== undefined) {
+    const percent = config.defaultBrightnessLevel;
+    return { percent, code: resolveBrightnessCode(config, percent).code };
+  }
+
+  if (config.useMaxBrightnessLevel && config.maxBrightnessLevel !== undefined) {
+    const percent = config.maxBrightnessLevel;
+    return { percent, code: findNearestLevel(config, percent).code };
+  }
+
+  // A guaranteed 100% candidate always exists (hundredPercentCode is
+  // required), so "highest" is now definitionally the true 100% signal
+  // rather than whatever happened to be the highest configured level.
+  return { percent: 100, code: config.hundredPercentCode };
+}
+
+export class DimmerAccessory {
+  private brightnessDebounceTimer?: NodeJS.Timeout;
+
+  // Bumped by any explicit brightness/off action (setBrightness, turnOff), to
+  // let setOn recognize when its own resolved level has been superseded by a
+  // real request that arrived while its send was still in flight. See the
+  // v0.7.3-v0.7.7 history in project memory for why this exists and why it's
+  // deliberately narrow (only the async gap of setOn's own send) rather than
+  // a longer deferred window.
+  //
+  // As of this version, setOn/turnOff no longer send the dedicated
+  // powerOnCode/powerOffCode signals at all - only the resolved brightness
+  // level (on) or zeroPercentCode (off), since a level signal alone has been
+  // confirmed to already power the device on. This is an experiment to see
+  // whether dropping the extra dedicated signal reduces the receiver
+  // confusion/unresponsiveness seen in earlier testing. powerOnCode/
+  // powerOffCode remain required config fields (unused for now) so this can
+  // be reverted without a config change if it doesn't help.
+  private brightnessActionId = 0;
+
+  // Every send() call for this dimmer is now a level-setting signal (0%, a
+  // configured level, or 100% - powerOnCode/powerOffCode are no longer sent
+  // as of v0.7.8), so tracking the last one actually sent lets send() skip a
+  // no-op resend outright. This specifically targets a debounce edge case:
+  // if two onSet(Brightness) calls that both nearest-match to the same
+  // signal arrive further apart than debounceSeconds, each completes its
+  // own independent debounce cycle and both would otherwise fire - sending
+  // the identical signal to the receiver twice, which earlier testing
+  // showed can push it into unwanted auto-dim/cycling behavior.
+  private lastSentCode?: string;
+
+  constructor(
+    private readonly platform: BroadlinkRMBlasterPlatform,
+    private readonly accessory: PlatformAccessory,
+    private readonly config: DimmerAccessoryConfig,
+    private readonly ip: string,
+  ) {
+    const service = this.accessory.getService(this.platform.Service.Lightbulb)
+      ?? this.accessory.addService(this.platform.Service.Lightbulb);
+    service.setCharacteristic(this.platform.Characteristic.Name, this.config.name);
+
+    service.getCharacteristic(this.platform.Characteristic.On)
+      .onGet(() => this.getOn())
+      .onSet((value) => this.setOn(value));
+
+    service.getCharacteristic(this.platform.Characteristic.Brightness)
+      .onGet(() => this.getBrightness())
+      .onSet((value) => this.setBrightness(value));
+  }
+
+  // Same assumed-state approach as BasicAccessory: a blaster has no feedback,
+  // so on/brightness are whatever we last set them to, cached in context.
+  private getOn(): CharacteristicValue {
+    return Boolean(this.accessory.context.on);
+  }
+
+  private getBrightness(): CharacteristicValue {
+    return Number(this.accessory.context.brightnessPercent ?? 0);
+  }
+
+  private clearBrightnessDebounce(): void {
+    if (this.brightnessDebounceTimer) {
+      clearTimeout(this.brightnessDebounceTimer);
+      this.brightnessDebounceTimer = undefined;
+    }
+  }
+
+  private async turnOff(): Promise<void> {
+    this.clearBrightnessDebounce();
+    this.brightnessActionId++;
+    await this.send(this.config.zeroPercentCode, 'Off (Brightness 0%)');
+    this.accessory.context.on = false;
+  }
+
+  private async setOn(value: CharacteristicValue): Promise<void> {
+    const on = Boolean(value);
+
+    if (!on) {
+      await this.turnOff();
+      return;
+    }
+
+    this.clearBrightnessDebounce();
+
+    const lastKnown = this.accessory.context.lastKnownLevel as ResolvedLevel | undefined;
+    const resolved = resolvePowerOnLevel(this.config, lastKnown);
+    const effectiveMax = getEffectiveMaxPercent(this.config);
+    const nearestPercent = findLevelByCode(this.config, resolved.code)?.percent ?? resolved.percent;
+    const myActionId = ++this.brightnessActionId;
+
+    // The resolved level's own signal is the only thing sent to turn the
+    // light on - a dedicated powerOnCode is no longer sent (see the
+    // comment on brightnessActionId).
+    await this.send(resolved.code, `Brightness ${nearestPercent}% (requested: ${resolved.percent}% of ${effectiveMax}%)`);
+    this.accessory.context.on = true;
+
+    if (this.brightnessActionId !== myActionId) {
+      // A real Brightness request (e.g. dragging the slider straight up
+      // from off) arrived while the send above was still in flight and has
+      // already taken over - don't display this guessed level on top of it.
+      return;
+    }
+
+    this.accessory.context.brightnessPercent = resolved.percent;
+    this.accessory.context.lastKnownLevel = resolved;
+
+    this.accessory.getService(this.platform.Service.Lightbulb)
+      ?.updateCharacteristic(this.platform.Characteristic.Brightness, resolved.percent);
+  }
+
+  // Debounced: a slider drag in the Home app fires many rapid onSet calls, so
+  // the actual send() is deferred until debounceSeconds of silence, reset on
+  // every call. Display state (and "last known brightness") updates
+  // immediately/optimistically so the slider itself tracks the drag smoothly
+  // and doesn't lag behind while the send is pending.
+  private setBrightness(value: CharacteristicValue): void {
+    this.brightnessActionId++;
+
+    const requestedPercent = Number(value);
+    const resolved = resolveBrightnessCode(this.config, requestedPercent);
+    const effectiveMax = getEffectiveMaxPercent(this.config);
+
+    this.accessory.context.on = true;
+    this.accessory.context.brightnessPercent = requestedPercent;
+    this.accessory.context.lastKnownLevel = resolved;
+
+    this.clearBrightnessDebounce();
+    const debounceMs = (this.config.debounceSeconds ?? DEFAULT_DEBOUNCE_SECONDS) * 1000;
+    this.brightnessDebounceTimer = setTimeout(() => {
+      this.brightnessDebounceTimer = undefined;
+      this.send(resolved.code, `Brightness ${resolved.percent}% (requested: ${requestedPercent}% of ${effectiveMax}%)`)
+        .catch(() => {
+          // send() already logs the failure; there's no live characteristic
+          // write left to report it back to by the time this timer fires.
+        });
+    }, debounceMs);
+  }
+
+  private async send(code: string, signalName: string): Promise<void> {
+    if (code === this.lastSentCode) {
+      return;
+    }
+
+    try {
+      await this.platform.broadlinkClient.sendCode(this.ip, code);
+      this.lastSentCode = code;
+      this.platform.log.info(`Sent ${signalName} to ${this.config.name}`);
+    } catch (error) {
+      this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
+      const { HapStatusError, HAPStatus } = this.platform.api.hap;
+      throw new HapStatusError(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    }
+  }
+}

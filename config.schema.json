@@ -1,0 +1,365 @@
+{
+  "pluginAlias": "BroadlinkRMBlaster",
+  "pluginType": "platform",
+  "singular": true,
+  "headerDisplay": "Blasts pre-recorded IR/RF hex signals via a Broadlink RM. Signals must be captured elsewhere (this plugin does not learn or discover devices).",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "rmDevices": {
+        "title": "Broadlink RM Devices",
+        "type": "array",
+        "minItems": 1,
+        "required": true,
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true,
+              "default": "Default RM",
+              "description": "Referenced by name from each accessory below - must be unique."
+            },
+            "ip": {
+              "title": "IP Address",
+              "type": "string",
+              "format": "ipv4",
+              "required": true
+            },
+            "enableTemperatureHumidity": {
+              "title": "Show temperature and humidity if available",
+              "type": "boolean",
+              "default": true,
+              "required": false,
+              "description": "Not all RM units report real sensor data. If yours doesn't, this sensor will just show \"No Response\" in Home."
+            }
+          }
+        }
+      },
+      "accessories": {
+        "title": "Accessories",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true
+            },
+            "rmDevice": {
+              "title": "RM Device",
+              "type": "string",
+              "required": true,
+              "default": "Default RM",
+              "description": "Must match the Name of one of the RM devices configured above."
+            },
+            "accessoryType": {
+              "title": "Accessory Type",
+              "type": "string",
+              "required": true,
+              "default": "light",
+              "oneOf": [
+                { "title": "Light", "enum": ["light"] },
+                { "title": "Switch", "enum": ["switch"] },
+                { "title": "Outlet", "enum": ["outlet"] },
+                { "title": "Fan", "enum": ["fan"] }
+              ]
+            },
+            "powerOnCode": {
+              "title": "Power On Signal",
+              "type": "string",
+              "required": true,
+              "description": "Hex code sent to turn the accessory on."
+            },
+            "powerOffCode": {
+              "title": "Power Off Signal",
+              "type": "string",
+              "required": false,
+              "description": "Hex code sent to turn the accessory off. Leave empty to reuse the Power On signal (useful for toggle-only remotes)."
+            }
+          }
+        }
+      },
+      "dimmers": {
+        "title": "Dimmer Lights",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true
+            },
+            "rmDevice": {
+              "title": "RM Device",
+              "type": "string",
+              "required": true,
+              "default": "Default RM",
+              "description": "Must match the Name of one of the RM devices configured above."
+            },
+            "powerOnCode": {
+              "title": "Power On Signal",
+              "type": "string",
+              "required": true,
+              "description": "Hex code sent to turn the light on. Always used for powering on, regardless of the resolved brightness level."
+            },
+            "powerOffCode": {
+              "title": "Power Off Signal",
+              "type": "string",
+              "required": true,
+              "description": "Hex code sent to turn the light off. Always used, instead of the Brightness 0% signal."
+            },
+            "useLastKnownBrightness": {
+              "title": "Use Last Known Brightness",
+              "type": "boolean",
+              "required": false,
+              "description": "When turning on, restore the last brightness this light was set to instead of a default/max/highest level."
+            },
+            "useDefaultBrightnessLevel": {
+              "title": "Set Default Brightness Level",
+              "type": "boolean",
+              "required": false,
+              "description": "Used when turning on if last-known brightness doesn't apply."
+            },
+            "defaultBrightnessLevel": {
+              "title": "Default Brightness Level (%)",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 50,
+              "required": false,
+              "condition": {
+                "functionBody": "return model.dimmers && model.dimmers[arrayIndices] && model.dimmers[arrayIndices].useDefaultBrightnessLevel === true;"
+              }
+            },
+            "useMaxBrightnessLevel": {
+              "title": "Set Max Brightness Level",
+              "type": "boolean",
+              "required": false,
+              "description": "Caps and remaps the 0-100% slider onto this percentage."
+            },
+            "maxBrightnessLevel": {
+              "title": "Max Brightness Level (%)",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 100,
+              "required": false,
+              "condition": {
+                "functionBody": "return model.dimmers && model.dimmers[arrayIndices] && model.dimmers[arrayIndices].useMaxBrightnessLevel === true;"
+              }
+            },
+            "zeroPercentCode": {
+              "title": "Brightness 0% Signal",
+              "type": "string",
+              "required": true,
+              "description": "Hex code for the lowest (0%) brightness level."
+            },
+            "hundredPercentCode": {
+              "title": "Brightness 100% Signal",
+              "type": "string",
+              "required": true,
+              "description": "Hex code for true 100% brightness. Always the actual full-brightness signal, regardless of any max brightness cap set above."
+            },
+            "debounceSeconds": {
+              "title": "Debounce (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "default": 0.5,
+              "required": false,
+              "description": "Wait this long after the slider stops moving before sending a signal, so dragging doesn't blast every intermediate position."
+            },
+            "levels": {
+              "title": "Brightness Levels",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "level": {
+                    "title": "Brightness Level (%)",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "required": true
+                  },
+                  "code": {
+                    "title": "Signal",
+                    "type": "string",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "tvs": {
+        "title": "TVs",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true
+            },
+            "rmDevice": {
+              "title": "RM Device",
+              "type": "string",
+              "required": true,
+              "default": "Default RM",
+              "description": "Must match the Name of one of the RM devices configured above."
+            },
+            "powerOnCode": {
+              "title": "Power On Signal",
+              "type": "string",
+              "required": true,
+              "description": "Hex code sent to turn the TV on."
+            },
+            "powerOffCode": {
+              "title": "Power Off Signal",
+              "type": "string",
+              "required": false,
+              "description": "Hex code sent to turn the TV off. Leave empty to reuse the Power On signal (useful for toggle-only remotes)."
+            },
+            "volumeUpCode": {
+              "title": "Volume Up Signal",
+              "type": "string",
+              "required": false
+            },
+            "volumeDownCode": {
+              "title": "Volume Down Signal",
+              "type": "string",
+              "required": false
+            },
+            "muteCode": {
+              "title": "Mute Signal",
+              "type": "string",
+              "required": false,
+              "description": "Most remotes use a single toggle button for mute - the same signal is sent whether muting or unmuting."
+            },
+            "arrowUpCode": {
+              "title": "Arrow Up Signal",
+              "type": "string",
+              "required": false
+            },
+            "arrowDownCode": {
+              "title": "Arrow Down Signal",
+              "type": "string",
+              "required": false
+            },
+            "arrowLeftCode": {
+              "title": "Arrow Left Signal",
+              "type": "string",
+              "required": false
+            },
+            "arrowRightCode": {
+              "title": "Arrow Right Signal",
+              "type": "string",
+              "required": false
+            },
+            "selectCode": {
+              "title": "Select Signal",
+              "type": "string",
+              "required": false
+            },
+            "infoCode": {
+              "title": "Info Signal",
+              "type": "string",
+              "required": false
+            },
+            "backCode": {
+              "title": "Back Signal",
+              "type": "string",
+              "required": false
+            },
+            "exitCode": {
+              "title": "Exit Signal",
+              "type": "string",
+              "required": false
+            }
+          }
+        }
+      }
+    }
+  },
+  "layout": [
+    {
+      "type": "array",
+      "key": "rmDevices",
+      "title": "Broadlink RM Devices",
+      "items": [
+        "rmDevices[].name",
+        "rmDevices[].ip",
+        "rmDevices[].enableTemperatureHumidity"
+      ]
+    },
+    {
+      "type": "array",
+      "key": "accessories",
+      "title": "Accessories",
+      "items": [
+        "accessories[].name",
+        "accessories[].rmDevice",
+        "accessories[].accessoryType",
+        "accessories[].powerOnCode",
+        "accessories[].powerOffCode"
+      ]
+    },
+    {
+      "type": "array",
+      "key": "dimmers",
+      "title": "Dimmer Lights",
+      "items": [
+        "dimmers[].name",
+        "dimmers[].rmDevice",
+        "dimmers[].powerOnCode",
+        "dimmers[].powerOffCode",
+        "dimmers[].useLastKnownBrightness",
+        "dimmers[].useDefaultBrightnessLevel",
+        "dimmers[].defaultBrightnessLevel",
+        "dimmers[].useMaxBrightnessLevel",
+        "dimmers[].maxBrightnessLevel",
+        "dimmers[].zeroPercentCode",
+        "dimmers[].hundredPercentCode",
+        "dimmers[].debounceSeconds",
+        {
+          "type": "array",
+          "key": "dimmers[].levels",
+          "title": "Brightness Levels",
+          "items": [
+            "dimmers[].levels[].level",
+            "dimmers[].levels[].code"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "array",
+      "key": "tvs",
+      "title": "TVs",
+      "items": [
+        "tvs[].name",
+        "tvs[].rmDevice",
+        "tvs[].powerOnCode",
+        "tvs[].powerOffCode",
+        "tvs[].volumeUpCode",
+        "tvs[].volumeDownCode",
+        "tvs[].muteCode",
+        "tvs[].arrowUpCode",
+        "tvs[].arrowDownCode",
+        "tvs[].arrowLeftCode",
+        "tvs[].arrowRightCode",
+        "tvs[].selectCode",
+        "tvs[].infoCode",
+        "tvs[].backCode",
+        "tvs[].exitCode"
+      ]
+    }
+  ]
+}

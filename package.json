@@ -1,0 +1,52 @@
+{
+  "name": "homebridge-broadlink-rm-blaster",
+  "version": "0.9.1",
+  "description": "Blast RF and IR signals from Broadlink RM devices using Homebridge",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LuudJacobs/homebridge-broadlink-rm-blaster.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LuudJacobs/homebridge-broadlink-rm-blaster/issues"
+  },
+  "engines": {
+    "node": "^18.15.0 || ^20.7.0 || ^22 || ^24",
+    "homebridge": "^1.8.0 || ^2.0.0"
+  },
+  "main": "dist/index.js",
+  "bin": {
+    "broadlink-rm-blaster": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "config.schema.json"
+  ],
+  "keywords": [
+    "homebridge",
+    "homebridge-plugin",
+    "broadlink",
+    "rm4",
+    "rm"
+  ],
+  "scripts": {
+    "build": "rimraf dist && tsc",
+    "prepare": "npm run build",
+    "watch": "npm run build && homebridge -D",
+    "lint": "eslint src test",
+    "test": "rimraf dist-test && tsc -p tsconfig.test.json && node --test \"dist-test/test/**/*.test.js\"",
+    "prepublishOnly": "npm run lint && npm run build"
+  },
+  "dependencies": {
+    "kiwicam-broadlinkjs-rm": "^0.9.22"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.1",
+    "homebridge": "^1.8.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.3"
+  }
+}
