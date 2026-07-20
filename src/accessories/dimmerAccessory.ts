@@ -127,7 +127,11 @@ export class DimmerAccessory {
     const lastKnown = this.accessory.context.lastKnownLevel as ResolvedLevel | undefined;
     const resolved = resolvePowerOnLevel(this.config, lastKnown);
 
+    // Power On only turns the light on - it doesn't carry a brightness level,
+    // so the resolved level's own signal has to be sent separately for the
+    // device to actually reach it, not just HomeKit's assumed display state.
     await this.send(this.config.powerOnCode, 'Power On');
+    await this.send(resolved.code, `Brightness ${resolved.percent}%`);
 
     this.accessory.context.on = true;
     this.accessory.context.brightnessPercent = resolved.percent;
