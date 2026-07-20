@@ -3,6 +3,14 @@ import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 import type { BroadlinkRMBlasterPlatform } from '../platform';
 import type { BrightnessStepDirection, DimmerAccessory } from './dimmerAccessory';
 
+// HomeKit controllers (the Home app) apply their own optimistic UI update the
+// instant a characteristic write is sent, and appear to ignore a follow-up
+// update that arrives too soon after - resetting synchronously right after
+// stepBrightness() resolves left the tile stuck "on" in the Home app even
+// though Homebridge's own state was correctly reset. A short delay before the
+// reset gives the controller time to treat it as a genuine, separate update.
+const RESET_DELAY_MS = 1000;
+
 // A momentary trigger, not a persistent toggle: tapping it steps the linked
 // dimmer's brightness, then the switch visually resets itself back to off.
 export class BrightnessStepSwitchAccessory {
@@ -29,7 +37,9 @@ export class BrightnessStepSwitchAccessory {
 
     await this.dimmer.stepBrightness(this.direction);
 
-    this.accessory.getService(this.platform.Service.Lightbulb)
-      ?.updateCharacteristic(this.platform.Characteristic.On, false);
+    setTimeout(() => {
+      this.accessory.getService(this.platform.Service.Lightbulb)
+        ?.updateCharacteristic(this.platform.Characteristic.On, false);
+    }, RESET_DELAY_MS);
   }
 }
