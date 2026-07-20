@@ -13,6 +13,7 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
 import { DimmerAccessory } from './accessories/dimmerAccessory';
+import { TvAccessory } from './accessories/tvAccessory';
 import { TemperatureHumiditySensorAccessory } from './accessories/temperatureHumiditySensorAccessory';
 
 export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
@@ -75,6 +76,20 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       this.upsertAccessory(uuid, dimmerConfig.name, (accessory) => {
         accessory.context.dimmerConfig = dimmerConfig;
         new DimmerAccessory(this, accessory, dimmerConfig, ip);
+      });
+    }
+
+    for (const tvConfig of config.tvs ?? []) {
+      const ip = tvConfig.ip ?? config.defaultIp;
+      if (!ip) {
+        this.log.warn(`Skipping TV "${tvConfig.name}": no IP address configured (set "ip" or "defaultIp")`);
+        continue;
+      }
+
+      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:tv:${tvConfig.name}`);
+      this.upsertAccessory(uuid, tvConfig.name, (accessory) => {
+        accessory.context.tvConfig = tvConfig;
+        new TvAccessory(this, accessory, tvConfig, ip);
       });
     }
 
