@@ -136,7 +136,7 @@ export class DimmerAccessory {
   private async turnOff(): Promise<void> {
     this.clearBrightnessDebounce();
     this.brightnessActionId++;
-    await this.send(this.config.zeroPercentCode, 'Power Off');
+    await this.send(this.config.zeroPercentCode, 'Off (Brightness 0%)');
     this.accessory.context.on = false;
   }
 
