@@ -95,7 +95,7 @@ export class DimmerAccessory {
     const on = Boolean(value);
 
     if (!on) {
-      await this.send(this.config.powerOffCode ?? this.config.zeroPercentCode);
+      await this.send(this.config.powerOffCode ?? this.config.zeroPercentCode, 'Power Off');
       this.accessory.context.on = false;
       return;
     }
@@ -103,7 +103,7 @@ export class DimmerAccessory {
     const lastKnown = this.accessory.context.lastKnownLevel as ResolvedLevel | undefined;
     const resolved = resolvePowerOnLevel(this.config, lastKnown);
 
-    await this.send(this.config.powerOnCode ?? resolved.code);
+    await this.send(this.config.powerOnCode ?? resolved.code, 'Power On');
 
     this.accessory.context.on = true;
     this.accessory.context.brightnessPercent = resolved.percent;
@@ -117,16 +117,17 @@ export class DimmerAccessory {
     const requestedPercent = Number(value);
     const resolved = resolveBrightnessCode(this.config, requestedPercent);
 
-    await this.send(resolved.code);
+    await this.send(resolved.code, `Brightness ${requestedPercent}%`);
 
     this.accessory.context.on = true;
     this.accessory.context.brightnessPercent = requestedPercent;
     this.accessory.context.lastKnownLevel = resolved;
   }
 
-  private async send(code: string): Promise<void> {
+  private async send(code: string, signalName: string): Promise<void> {
     try {
       await this.platform.broadlinkClient.sendCode(this.ip, code);
+      this.platform.log.info(`Sent ${signalName} to ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
       const { HapStatusError, HAPStatus } = this.platform.api.hap;
