@@ -81,10 +81,10 @@ Example `config.json` platform block:
   sensor accessory entirely. `temperatureSensorIp` overrides `defaultIp` for it.
 - `accessories[].powerOffCode`: optional; if omitted, the power-on signal is
   reused for both on and off (useful for toggle-only remotes).
-- `dimmers[].powerOnCode` / `powerOffCode`: required, and always used for
-  powering on/off, regardless of the resolved brightness level (some RF
-  receivers only fully cycle on/off with their own dedicated signal - a
-  brightness-level signal isn't a reliable substitute).
+- `dimmers[].powerOnCode` / `powerOffCode`: required fields, but currently
+  unused by the plugin - power on/off is done with the resolved brightness
+  level and `zeroPercentCode` instead, as an ongoing experiment to reduce RF
+  traffic. Still required so this can be reverted without a config change.
 - `dimmers[].defaultBrightnessLevel` / `maxBrightnessLevel`: independent target
   percentages, not tied to a specific configured level — the nearest configured
   signal is sent, but the percentage shown in Home stays the configured target.
