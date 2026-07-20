@@ -11,7 +11,7 @@ remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-bro
 
 > This project was vibe coded using Claude.
 
-## Usage
+## Features
 
 - Basic accessories (Light, Switch, Outlet, Fan) — power on/off via a hex signal.
 - Dimmer lights — one hex signal per discrete brightness level, with optional
