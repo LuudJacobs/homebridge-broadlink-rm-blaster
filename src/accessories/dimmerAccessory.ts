@@ -80,6 +80,15 @@ export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: R
 export class DimmerAccessory {
   private brightnessDebounceTimer?: NodeJS.Timeout;
 
+  // Bumped by any explicit brightness/off action (setBrightness, turnOff).
+  // setOn's own resolved default/last-known/max level is only a guess made
+  // in the absence of a real request - if the user actually turned on by
+  // dragging the slider itself (HomeKit sends On=true and Brightness=X for
+  // the same gesture), setBrightness's onSet can fire while setOn's "Power
+  // On" send is still in flight, and setOn must recognize its guess has been
+  // superseded rather than blast/display it on top of the real request.
+  private brightnessActionId = 0;
+
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
@@ -118,6 +127,7 @@ export class DimmerAccessory {
 
   private async turnOff(): Promise<void> {
     this.clearBrightnessDebounce();
+    this.brightnessActionId++;
     await this.send(this.config.powerOffCode, 'Power Off');
     this.accessory.context.on = false;
   }
@@ -136,14 +146,24 @@ export class DimmerAccessory {
     const resolved = resolvePowerOnLevel(this.config, lastKnown);
     const effectiveMax = getEffectiveMaxPercent(this.config);
     const nearestPercent = findLevelByCode(this.config, resolved.code)?.percent ?? resolved.percent;
+    const myActionId = ++this.brightnessActionId;
+
+    await this.send(this.config.powerOnCode, 'Power On');
+    this.accessory.context.on = true;
+
+    if (this.brightnessActionId !== myActionId) {
+      // A real Brightness request (e.g. dragging the slider straight up
+      // from off) arrived while "Power On" was still in flight and has
+      // already taken over - don't blast or display this guessed level on
+      // top of it.
+      return;
+    }
 
     // Power On only turns the light on - it doesn't carry a brightness level,
     // so the resolved level's own signal has to be sent separately for the
     // device to actually reach it, not just HomeKit's assumed display state.
-    await this.send(this.config.powerOnCode, 'Power On');
     await this.send(resolved.code, `Brightness ${nearestPercent}% (requested: ${resolved.percent}% of ${effectiveMax}%)`);
 
-    this.accessory.context.on = true;
     this.accessory.context.brightnessPercent = resolved.percent;
     this.accessory.context.lastKnownLevel = resolved;
 
@@ -157,6 +177,8 @@ export class DimmerAccessory {
   // immediately/optimistically so the slider itself tracks the drag smoothly
   // and doesn't lag behind while the send is pending.
   private setBrightness(value: CharacteristicValue): void {
+    this.brightnessActionId++;
+
     const requestedPercent = Number(value);
     const resolved = resolveBrightnessCode(this.config, requestedPercent);
     const effectiveMax = getEffectiveMaxPercent(this.config);
