@@ -5,7 +5,7 @@ Blast RF and IR signals from a Broadlink RM using Homebridge. Inspired by
 built on [kiwicam-broadlinkjs-rm](https://www.npmjs.com/package/kiwicam-broadlinkjs-rm)
 for the underlying device communication.
 
-This plugin sends pre-recorded hex signals to a known device IP — it does not learn
+This plugin sends pre-recorded hex signals to a known device IP. It does not learn
 signals or autodiscover the Broadlink device. To capture hex codes from your own
 remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
 
@@ -13,29 +13,45 @@ remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-bro
 
 ## Features
 
-- **Multiple RM devices** — configure several Broadlink RMs and assign each
+- **Multiple RM devices** configure several Broadlink RMs and assign each
   accessory to whichever one it's actually near.
 - **Basic accessories** power on/off via a hex signal.
-- **Dimmer lights** one hex signal per discrete brightness level, with optional
-  default/max brightness and "use last known brightness" on power on.
+- **Dimmer lights** one hex signal per discrete brightness level
 - **TVs** power on/off plus a usable remote (arrows, select, back, exit, info,
-  volume, mute) in the iOS Remote app, all optional besides power.
+  volume, mute) in the iOS Remote app
 - **Temperature/humidity sensor**: polls the RM every 60 seconds, on by default.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
-## Setup
+## Setup and Usage
 
 ```bash
 npm install -g homebridge-broadlink-rm-blaster
 ```
 
 Your Broadlink RM must be unlocked using the official Broadlink app before this
-plugin (or any third-party integration) can control it — new devices ship locked,
+plugin (or any third-party integration) can control it: new devices ship locked,
 which blocks local API access.
+
+### TVs
+
+**TVs don't appear automatically alongside your other accessories.** HomeKit
+only shows a proper TV tile/remote when it's added as its own accessory, so
+each one needs to be paired separately: after restarting Homebridge, check
+its log for a line like `Please add [name] manually in Home app. Setup
+Code: ...` for each configured TV, then add it in the Home app using that
+code, the same way you'd add any other HomeKit accessory. If you remove a
+TV from your config later, it has to be removed from the Home app manually
+too since Homebridge can't unpair it for you.
 
 ## Configuration
 
-Example `config.json` platform block:
+This plugin can be fully configured from the Homebridge Config UI X plugin
+settings form.
+
+### config.json
+
+If you'd rather edit the config file directly, here's an example
+`config.json` platform block:
 
 ```json
 {
@@ -106,7 +122,7 @@ Example `config.json` platform block:
   `enableTemperatureHumidity` (defaults to `true`) adds a temperature/humidity
   sensor accessory for that specific device.
 - `rmDevice` on every accessory/dimmer/TV below is a plain text field that
-  must exactly match the `name` of one of the devices above — there's no
+  must exactly match the `name` of one of the devices above. There's no
   live dropdown, since Homebridge's config UI can't populate one from
   sibling array data. Save your RM devices first, then reference them by
   name; a typo just makes that accessory get skipped with a warning in the
@@ -118,30 +134,19 @@ Example `config.json` platform block:
   level and `zeroPercentCode` instead, as an ongoing experiment to reduce RF
   traffic. Still required so this can be reverted without a config change.
 - `dimmers[].defaultBrightnessLevel` / `maxBrightnessLevel`: independent target
-  percentages, not tied to a specific configured level — the nearest configured
+  percentages, not tied to a specific configured level. The nearest configured
   signal is sent, but the percentage shown in Home stays the configured target.
-- `dimmers[].hundredPercentCode`: required, like `zeroPercentCode` — the true,
+- `dimmers[].hundredPercentCode`: required, like `zeroPercentCode`: the true,
   uncapped 100% signal, always reachable regardless of any max brightness cap.
 - `dimmers[].debounceSeconds`: defaults to `0.5`. A slider drag fires many
   rapid updates; the actual signal only sends after this long of no movement.
-- `tvs[].powerOnCode` is the only required TV field — everything else
+- `tvs[].powerOnCode` is the only required TV field. Everything else
   (`powerOffCode`, `volumeUpCode`/`volumeDownCode`, `muteCode`,
   `arrowUpCode`/`arrowDownCode`/`arrowLeftCode`/`arrowRightCode`,
   `selectCode`, `infoCode`, `backCode`, `exitCode`) is optional; pressing a
   remote button with no signal configured for it just does nothing.
   `muteCode` is sent as-is for both muting and unmuting, since most remotes
   use a single toggle button rather than distinct on/off signals.
-
-Config can also be edited through `homebridge-config-ui-x`.
-
-**TVs don't appear automatically alongside your other accessories.** HomeKit
-only shows a proper TV tile/remote when it's added as its own accessory, so
-each one needs to be paired separately: after restarting Homebridge, check
-its log for a line like `Please add [name] manually in Home app. Setup
-Code: ...` for each configured TV, then add it in the Home app using that
-code, the same way you'd add any other HomeKit accessory. If you remove a
-TV from your config later, it has to be removed from the Home app manually
-too since Homebridge can't unpair it for you.
 
 ## Debugging
 
