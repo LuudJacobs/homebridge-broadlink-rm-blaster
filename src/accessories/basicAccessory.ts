@@ -1,6 +1,6 @@
 import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 
-import type { BroadlinkRM4ProBlasterPlatform } from '../platform';
+import type { BroadlinkRMBlasterPlatform } from '../platform';
 import type { BasicAccessoryConfig } from '../configTypes';
 
 export function selectPowerCode(config: Pick<BasicAccessoryConfig, 'powerOnCode' | 'powerOffCode'>, on: boolean): string {
@@ -9,7 +9,7 @@ export function selectPowerCode(config: Pick<BasicAccessoryConfig, 'powerOnCode'
 
 export class BasicAccessory {
   constructor(
-    private readonly platform: BroadlinkRM4ProBlasterPlatform,
+    private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
     private readonly config: BasicAccessoryConfig,
     private readonly ip: string,

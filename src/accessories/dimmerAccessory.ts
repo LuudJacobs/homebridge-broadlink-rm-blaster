@@ -1,6 +1,6 @@
 import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 
-import type { BroadlinkRM4ProBlasterPlatform } from '../platform';
+import type { BroadlinkRMBlasterPlatform } from '../platform';
 import type { DimmerAccessoryConfig } from '../configTypes';
 
 export interface ResolvedLevel {
@@ -63,7 +63,7 @@ export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: R
 
 export class DimmerAccessory {
   constructor(
-    private readonly platform: BroadlinkRM4ProBlasterPlatform,
+    private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
     private readonly config: DimmerAccessoryConfig,
     private readonly ip: string,

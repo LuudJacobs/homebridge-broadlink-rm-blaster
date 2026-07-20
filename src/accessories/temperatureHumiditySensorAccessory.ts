@@ -1,13 +1,13 @@
 import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 
-import type { BroadlinkRM4ProBlasterPlatform } from '../platform';
+import type { BroadlinkRMBlasterPlatform } from '../platform';
 
 const POLL_INTERVAL_MS = 60_000;
-const SENSOR_NAME = 'RM4 Pro Sensor';
+const SENSOR_NAME = 'RM Sensor';
 
 export class TemperatureHumiditySensorAccessory {
   constructor(
-    private readonly platform: BroadlinkRM4ProBlasterPlatform,
+    private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
     private readonly ip: string,
   ) {
@@ -23,7 +23,7 @@ export class TemperatureHumiditySensorAccessory {
     humidityService.getCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity)
       .onGet(() => this.getHumidity());
 
-    // Not all RM4 Pro units actually report real sensor data ("if available" in
+    // Not all RM units actually report real sensor data ("if available" in
     // the todo) - an immediate poll plus a recurring one lets a supported unit
     // start reporting quickly, while an unsupported one just keeps failing
     // quietly and onGet honestly reports "no response" rather than a fake 0.
