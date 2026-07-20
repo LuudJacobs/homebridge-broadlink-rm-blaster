@@ -28,6 +28,19 @@ export function remapToPhysicalPercent(requestedPercent: number, config: DimmerA
   return (requestedPercent * getEffectiveMaxPercent(config)) / 100;
 }
 
+// The inverse of remapToPhysicalPercent - converts an actual/physical level
+// (e.g. a candidate landed on by up/down stepping) back into the logical
+// 0-100 scale the slider and displayed brightness use, so a physical 25%
+// signal under a 50% max appears as logical 50% everywhere, consistent with
+// how the slider itself represents a capped range.
+export function remapToLogicalPercent(physicalPercent: number, config: DimmerAccessoryConfig): number {
+  const effectiveMax = getEffectiveMaxPercent(config);
+  if (effectiveMax <= 0) {
+    return 0;
+  }
+  return (physicalPercent * 100) / effectiveMax;
+}
+
 export function findNearestLevel(config: DimmerAccessoryConfig, physicalPercent: number): ResolvedLevel {
   const candidates = candidateLevels(config);
   return candidates.reduce((closest, candidate) =>
@@ -198,8 +211,15 @@ export class DimmerAccessory {
   // rather than duplicating state via some other cross-accessory channel.
   async stepBrightness(direction: BrightnessStepDirection): Promise<void> {
     this.clearBrightnessDebounce();
-    const currentPercent = this.accessory.context.on ? Number(this.accessory.context.brightnessPercent ?? 0) : 0;
-    const target = resolveStepTarget(this.config, currentPercent, direction);
+
+    // "Current position" for finding the next step must be on the physical
+    // scale (lastKnownLevel.percent) to compare correctly against
+    // resolveStepTarget's physical candidate list - brightnessPercent is the
+    // logical/displayed value and only equals the physical one when no max
+    // is configured, which is why this only broke once a max cap was set.
+    const lastKnown = this.accessory.context.lastKnownLevel as ResolvedLevel | undefined;
+    const currentPhysicalPercent = this.accessory.context.on ? (lastKnown?.percent ?? 0) : 0;
+    const target = resolveStepTarget(this.config, currentPhysicalPercent, direction);
 
     if (!target) {
       return;
@@ -212,15 +232,18 @@ export class DimmerAccessory {
       return;
     }
 
-    await this.send(target.code, `Brightness ${target.percent}%`);
+    const effectiveMax = getEffectiveMaxPercent(this.config);
+    const displayPercent = remapToLogicalPercent(target.percent, this.config);
+
+    await this.send(target.code, `Brightness ${target.percent}% (requested: ${displayPercent}% of ${effectiveMax}%)`);
 
     this.accessory.context.on = true;
-    this.accessory.context.brightnessPercent = target.percent;
+    this.accessory.context.brightnessPercent = displayPercent;
     this.accessory.context.lastKnownLevel = target;
 
     const service = this.accessory.getService(this.platform.Service.Lightbulb);
     service?.updateCharacteristic(this.platform.Characteristic.On, true);
-    service?.updateCharacteristic(this.platform.Characteristic.Brightness, target.percent);
+    service?.updateCharacteristic(this.platform.Characteristic.Brightness, displayPercent);
   }
 
   private async send(code: string, signalName: string): Promise<void> {

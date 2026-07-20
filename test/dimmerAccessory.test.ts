@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   findNearestLevel,
+  remapToLogicalPercent,
   remapToPhysicalPercent,
   resolveBrightnessCode,
   resolvePowerOnLevel,
@@ -121,4 +122,18 @@ test('resolveStepTarget: steps to the adjacent configured level in the middle of
 test('resolveStepTarget: up respects the configured max, refusing to step past it', () => {
   // withMax50 candidates are capped to [0, 25, 50] - already at the capped ceiling
   assert.equal(resolveStepTarget(withMax50, 50, 'up'), undefined);
+});
+
+test('remapToLogicalPercent is the inverse of remapToPhysicalPercent (todo bug report example)', () => {
+  // physical 25% under a 50% max should display/log as logical 50% - the
+  // exact case reported: "sent 25%, max is 50%, should appear as if 50%"
+  assert.equal(remapToLogicalPercent(25, withMax50), 50);
+  // reaching the physical ceiling (50, the max itself) should appear as 100%,
+  // consistent with sliding to 100% under the same cap
+  assert.equal(remapToLogicalPercent(50, withMax50), 100);
+  assert.equal(remapToLogicalPercent(0, withMax50), 0);
+});
+
+test('remapToLogicalPercent is a no-op when no max level is configured', () => {
+  assert.equal(remapToLogicalPercent(80, baseConfig), 80);
 });
