@@ -3,23 +3,23 @@ import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 import type { BroadlinkRMBlasterPlatform } from '../platform';
 
 const POLL_INTERVAL_MS = 60_000;
-const SENSOR_NAME = 'RM Sensor';
 
 export class TemperatureHumiditySensorAccessory {
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
     private readonly ip: string,
+    private readonly name: string,
   ) {
     const temperatureService = this.accessory.getService(this.platform.Service.TemperatureSensor)
       ?? this.accessory.addService(this.platform.Service.TemperatureSensor);
-    temperatureService.setCharacteristic(this.platform.Characteristic.Name, SENSOR_NAME);
+    temperatureService.setCharacteristic(this.platform.Characteristic.Name, this.name);
     temperatureService.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .onGet(() => this.getTemperature());
 
     const humidityService = this.accessory.getService(this.platform.Service.HumiditySensor)
       ?? this.accessory.addService(this.platform.Service.HumiditySensor);
-    humidityService.setCharacteristic(this.platform.Characteristic.Name, SENSOR_NAME);
+    humidityService.setCharacteristic(this.platform.Characteristic.Name, this.name);
     humidityService.getCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity)
       .onGet(() => this.getHumidity());
 

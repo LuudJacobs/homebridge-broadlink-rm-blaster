@@ -9,16 +9,18 @@ This plugin sends pre-recorded hex signals to a known device IP — it does not 
 signals or autodiscover the Broadlink device. To capture hex codes from your own
 remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
 
-> This project was vibe coded using Claude.
+> This project was vibe coded using Claude
 
 ## Features
 
-- Basic accessories (Light, Switch, Outlet, Fan) — power on/off via a hex signal.
-- Dimmer lights — one hex signal per discrete brightness level, with optional
+- **Multiple RM devices** — configure several Broadlink RMs and assign each
+  accessory to whichever one it's actually near.
+- **Basic accessories** power on/off via a hex signal.
+- **Dimmer lights** one hex signal per discrete brightness level, with optional
   default/max brightness and "use last known brightness" on power on.
-- TVs — power on/off plus a usable remote (arrows, select, back, exit, info,
+- **TVs** power on/off plus a usable remote (arrows, select, back, exit, info,
   volume, mute) in the iOS Remote app, all optional besides power.
-- Temperature/humidity sensor — polls the RM every 60 seconds, on by default.
+- **Temperature/humidity sensor**: polls the RM every 60 seconds, on by default.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
 ## Setup
@@ -38,18 +40,28 @@ Example `config.json` platform block:
 ```json
 {
   "platform": "BroadlinkRMBlaster",
-  "defaultIp": "192.168.1.50",
-  "showTemperatureHumidity": true,
+  "rmDevices": [
+    {
+      "name": "Default RM",
+      "ip": "192.168.1.50",
+      "enableTemperatureHumidity": true
+    },
+    {
+      "name": "Bedroom RM",
+      "ip": "192.168.1.60"
+    }
+  ],
   "accessories": [
     {
       "name": "Living Room Lamp",
+      "rmDevice": "Default RM",
       "accessoryType": "light",
       "powerOnCode": "2600...",
       "powerOffCode": "2600..."
     },
     {
       "name": "Fan",
-      "ip": "192.168.1.51",
+      "rmDevice": "Bedroom RM",
       "accessoryType": "fan",
       "powerOnCode": "2600..."
     }
@@ -57,6 +69,7 @@ Example `config.json` platform block:
   "dimmers": [
     {
       "name": "Bedroom Dimmer",
+      "rmDevice": "Bedroom RM",
       "powerOnCode": "2600...",
       "powerOffCode": "2600...",
       "zeroPercentCode": "2600...",
@@ -77,6 +90,7 @@ Example `config.json` platform block:
   "tvs": [
     {
       "name": "Living Room TV",
+      "rmDevice": "Default RM",
       "powerOnCode": "2600...",
       "volumeUpCode": "2600...",
       "volumeDownCode": "2600...",
@@ -88,10 +102,15 @@ Example `config.json` platform block:
 }
 ```
 
-- `defaultIp`: IP address of your Broadlink RM, used when an accessory
-  doesn't specify its own `ip`.
-- `showTemperatureHumidity`: defaults to `true`. Set to `false` to remove the
-  sensor accessory entirely. `temperatureSensorIp` overrides `defaultIp` for it.
+- `rmDevices`: at least one required. Each needs a unique `name` and `ip`;
+  `enableTemperatureHumidity` (defaults to `true`) adds a temperature/humidity
+  sensor accessory for that specific device.
+- `rmDevice` on every accessory/dimmer/TV below is a plain text field that
+  must exactly match the `name` of one of the devices above — there's no
+  live dropdown, since Homebridge's config UI can't populate one from
+  sibling array data. Save your RM devices first, then reference them by
+  name; a typo just makes that accessory get skipped with a warning in the
+  log rather than silently misbehaving.
 - `accessories[].powerOffCode`: optional; if omitted, the power-on signal is
   reused for both on and off (useful for toggle-only remotes).
 - `dimmers[].powerOnCode` / `powerOffCode`: required fields, but currently
@@ -115,14 +134,14 @@ Example `config.json` platform block:
 
 Config can also be edited through `homebridge-config-ui-x`.
 
-TVs don't appear automatically alongside your other accessories - HomeKit
+**TVs don't appear automatically alongside your other accessories.** HomeKit
 only shows a proper TV tile/remote when it's added as its own accessory, so
 each one needs to be paired separately: after restarting Homebridge, check
 its log for a line like `Please add [name] manually in Home app. Setup
 Code: ...` for each configured TV, then add it in the Home app using that
 code, the same way you'd add any other HomeKit accessory. If you remove a
 TV from your config later, it has to be removed from the Home app manually
-too - Homebridge can't unpair it for you.
+too since Homebridge can't unpair it for you.
 
 ## Debugging
 

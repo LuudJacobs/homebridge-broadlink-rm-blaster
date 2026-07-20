@@ -48,9 +48,11 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     this.activeUuids.clear();
 
     for (const accessoryConfig of config.accessories ?? []) {
-      const ip = accessoryConfig.ip ?? config.defaultIp;
+      const ip = this.resolveRmDeviceIp(config, accessoryConfig.rmDevice);
       if (!ip) {
-        this.log.warn(`Skipping accessory "${accessoryConfig.name}": no IP address configured (set "ip" or "defaultIp")`);
+        this.log.warn(
+          `Skipping accessory "${accessoryConfig.name}": no RM device named "${accessoryConfig.rmDevice}" configured`,
+        );
         continue;
       }
 
@@ -62,9 +64,9 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     }
 
     for (const dimmerConfig of config.dimmers ?? []) {
-      const ip = dimmerConfig.ip ?? config.defaultIp;
+      const ip = this.resolveRmDeviceIp(config, dimmerConfig.rmDevice);
       if (!ip) {
-        this.log.warn(`Skipping dimmer "${dimmerConfig.name}": no IP address configured (set "ip" or "defaultIp")`);
+        this.log.warn(`Skipping dimmer "${dimmerConfig.name}": no RM device named "${dimmerConfig.rmDevice}" configured`);
         continue;
       }
       if (dimmerConfig.levels.length === 0) {
@@ -81,19 +83,26 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
 
     this.publishTvAccessories(config);
 
-    if (config.showTemperatureHumidity !== false) {
-      const ip = config.temperatureSensorIp ?? config.defaultIp;
-      if (!ip) {
-        this.log.warn('Skipping temperature/humidity sensor: no IP address configured (set "temperatureSensorIp" or "defaultIp")');
-      } else {
-        const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:sensor`);
-        this.upsertAccessory(uuid, 'RM Sensor', (accessory) => {
-          new TemperatureHumiditySensorAccessory(this, accessory, ip);
-        });
+    for (const rmDevice of config.rmDevices ?? []) {
+      if (!rmDevice.enableTemperatureHumidity) {
+        continue;
       }
+
+      const sensorName = `${rmDevice.name} Sensor`;
+      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:sensor:${rmDevice.name}`);
+      this.upsertAccessory(uuid, sensorName, (accessory) => {
+        new TemperatureHumiditySensorAccessory(this, accessory, rmDevice.ip, sensorName);
+      });
     }
 
     this.pruneStaleAccessories();
+  }
+
+  // Every accessory now references its RM by name (rmDevice) instead of an
+  // optional ip/"use the default" override, since there's no longer a single
+  // default device once multiple RM devices are configured.
+  private resolveRmDeviceIp(config: BlasterPlatformConfig, rmDeviceName: string): string | undefined {
+    return config.rmDevices?.find((device) => device.name === rmDeviceName)?.ip;
   }
 
   // TVs can't go through upsertAccessory's normal bridged path: HomeKit only
@@ -110,9 +119,9 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     const externalAccessories: PlatformAccessory[] = [];
 
     for (const tvConfig of config.tvs ?? []) {
-      const ip = tvConfig.ip ?? config.defaultIp;
+      const ip = this.resolveRmDeviceIp(config, tvConfig.rmDevice);
       if (!ip) {
-        this.log.warn(`Skipping TV "${tvConfig.name}": no IP address configured (set "ip" or "defaultIp")`);
+        this.log.warn(`Skipping TV "${tvConfig.name}": no RM device named "${tvConfig.rmDevice}" configured`);
         continue;
       }
 

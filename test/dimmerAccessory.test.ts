@@ -11,6 +11,7 @@ import type { DimmerAccessoryConfig } from '../src/configTypes';
 
 const baseConfig: DimmerAccessoryConfig = {
   name: 'Test Dimmer',
+  rmDevice: 'Default RM',
   powerOnCode: 'power-on-code',
   powerOffCode: 'power-off-code',
   zeroPercentCode: 'zero-code',
@@ -47,6 +48,7 @@ test('resolveBrightnessCode remaps then nearest-matches', () => {
 test('the dedicated 100% signal is reachable even with no configured level near it', () => {
   const config: DimmerAccessoryConfig = {
     name: 'Sparse Dimmer',
+    rmDevice: 'Default RM',
     powerOnCode: 'power-on-code',
     powerOffCode: 'power-off-code',
     zeroPercentCode: 'zero-code',

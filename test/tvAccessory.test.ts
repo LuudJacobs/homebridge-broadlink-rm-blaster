@@ -6,6 +6,7 @@ import type { TvAccessoryConfig } from '../src/configTypes';
 
 const baseConfig: TvAccessoryConfig = {
   name: 'Test TV',
+  rmDevice: 'Default RM',
   powerOnCode: 'power-on-code',
   arrowUpCode: 'arrow-up-code',
   selectCode: 'select-code',

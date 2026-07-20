@@ -1,10 +1,16 @@
 import type { PlatformConfig } from 'homebridge';
 
+export interface RmDeviceConfig {
+  name: string;
+  ip: string;
+  enableTemperatureHumidity?: boolean;
+}
+
 export type BasicAccessoryType = 'light' | 'switch' | 'outlet' | 'fan';
 
 export interface BasicAccessoryConfig {
   name: string;
-  ip?: string;
+  rmDevice: string;
   accessoryType: BasicAccessoryType;
   powerOnCode: string;
   powerOffCode?: string;
@@ -17,7 +23,7 @@ export interface BrightnessLevelConfig {
 
 export interface DimmerAccessoryConfig {
   name: string;
-  ip?: string;
+  rmDevice: string;
   powerOnCode: string;
   powerOffCode: string;
   useLastKnownBrightness?: boolean;
@@ -33,7 +39,7 @@ export interface DimmerAccessoryConfig {
 
 export interface TvAccessoryConfig {
   name: string;
-  ip?: string;
+  rmDevice: string;
   powerOnCode: string;
   powerOffCode?: string;
   volumeUpCode?: string;
@@ -50,9 +56,7 @@ export interface TvAccessoryConfig {
 }
 
 export interface BlasterPlatformConfig extends PlatformConfig {
-  defaultIp: string;
-  showTemperatureHumidity?: boolean;
-  temperatureSensorIp?: string;
+  rmDevices: RmDeviceConfig[];
   accessories?: BasicAccessoryConfig[];
   dimmers?: DimmerAccessoryConfig[];
   tvs?: TvAccessoryConfig[];
