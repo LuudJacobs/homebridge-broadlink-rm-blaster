@@ -57,6 +57,7 @@ export class BasicAccessory {
     try {
       await this.platform.broadlinkClient.sendCode(this.ip, code);
       this.accessory.context.on = on;
+      this.platform.log.info(`Sent ${on ? 'Power On' : 'Power Off'} to ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
       const { HapStatusError, HAPStatus } = this.platform.api.hap;
