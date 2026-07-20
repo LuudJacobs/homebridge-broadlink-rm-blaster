@@ -1,6 +1,6 @@
 {
   "name": "homebridge-broadlink-rm4pro-blaster",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Blast RF and IR signals from Broadlink RM4 Pro using Homebridge",
   "license": "MIT",
   "repository": {

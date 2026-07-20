@@ -63,14 +63,17 @@ export class BroadlinkClient {
 
     return new Promise<TemperatureHumidityReading>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        device.removeListener('temperature', onTemperature);
         reject(new Error(`Timed out reading temperature/humidity from ${ip}`));
       }, READ_TIMEOUT_MS);
 
-      device.once('temperature', (temperature, humidity) => {
+      const onTemperature = (temperature: number, humidity: number) => {
         clearTimeout(timeout);
+        device.removeListener('temperature', onTemperature);
         resolve({ temperature, humidity });
-      });
+      };
 
+      device.on('temperature', onTemperature);
       device.checkTemperature();
     });
   }
