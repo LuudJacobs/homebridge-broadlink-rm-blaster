@@ -13,11 +13,11 @@ import type { DimmerAccessoryConfig } from '../src/configTypes';
 const baseConfig: DimmerAccessoryConfig = {
   name: 'Test Dimmer',
   zeroPercentCode: 'zero-code',
+  hundredPercentCode: 'hundred-code',
   levels: [
     { level: 25, code: 'twenty-five-code' },
     { level: 50, code: 'fifty-code' },
     { level: 75, code: 'seventy-five-code' },
-    { level: 100, code: 'hundred-code' },
   ],
 };
 
@@ -41,6 +41,19 @@ test('findNearestLevel matches the closest configured level, including the 0% ca
 test('resolveBrightnessCode remaps then nearest-matches', () => {
   // requested 100 -> physical 50 -> nearest is the 50% level itself
   assert.equal(resolveBrightnessCode(withMax50, 100).code, 'fifty-code');
+});
+
+test('the dedicated 100% signal is reachable even with no configured level near it', () => {
+  const config: DimmerAccessoryConfig = {
+    name: 'Sparse Dimmer',
+    zeroPercentCode: 'zero-code',
+    hundredPercentCode: 'true-hundred-code',
+    levels: [
+      { level: 25, code: 'twenty-five-code' },
+      { level: 50, code: 'fifty-code' },
+    ],
+  };
+  assert.equal(resolveBrightnessCode(config, 95).code, 'true-hundred-code');
 });
 
 test('resolvePowerOnLevel prefers last-known brightness when enabled', () => {

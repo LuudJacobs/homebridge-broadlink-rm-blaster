@@ -57,6 +57,8 @@ Example `config.json` platform block:
     {
       "name": "Bedroom Dimmer",
       "zeroPercentCode": "2600...",
+      "hundredPercentCode": "2600...",
+      "debounceSeconds": 0.5,
       "useLastKnownBrightness": true,
       "useDefaultBrightnessLevel": true,
       "defaultBrightnessLevel": 75,
@@ -65,8 +67,7 @@ Example `config.json` platform block:
       "levels": [
         { "level": 25, "code": "2600..." },
         { "level": 50, "code": "2600..." },
-        { "level": 75, "code": "2600..." },
-        { "level": 100, "code": "2600..." }
+        { "level": 75, "code": "2600..." }
       ]
     }
   ]
@@ -88,5 +89,9 @@ Example `config.json` platform block:
   switches that step through the configured levels, respecting the max cap.
   `brightnessSwitchesName` overrides `<name>`; `hideBrightnessSlider` removes
   the slider entirely so only the switches control brightness.
+- `dimmers[].hundredPercentCode`: required, like `zeroPercentCode` — the true,
+  uncapped 100% signal, always reachable regardless of any max brightness cap.
+- `dimmers[].debounceSeconds`: defaults to `0.5`. A slider drag fires many
+  rapid updates; the actual signal only sends after this long of no movement.
 
 Config can also be edited through `homebridge-config-ui-x`.
