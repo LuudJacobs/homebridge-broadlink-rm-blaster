@@ -1,12 +1,12 @@
 # homebridge-broadlink-rm-blaster
 
-Blast RF and IR signals from a Broadlink RM using Homebridge. Inspired by
+Blast RF and IR signals from Broadlink RM devices using Homebridge. Inspired by
 [homebridge-broadlink-rm](https://github.com/kiwi-cam/homebridge-broadlink-rm#readme),
 built on [kiwicam-broadlinkjs-rm](https://www.npmjs.com/package/kiwicam-broadlinkjs-rm)
 for the underlying device communication.
 
-This plugin sends pre-recorded hex signals to a known device IP. It does not learn
-signals or autodiscover the Broadlink device. To capture hex codes from your own
+This plugin sends pre-recorded hex signals to a known device IP. **It does not learn
+signals or autodiscover the Broadlink devices.** To capture hex codes from your own
 remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
 
 > This project was vibe coded using Claude
@@ -19,7 +19,7 @@ remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-bro
 - **Dimmer lights** one hex signal per discrete brightness level
 - **TVs** power on/off plus a usable remote (arrows, select, back, exit, info,
   volume, mute) in the iOS Remote app
-- **Temperature/humidity sensor**: polls the RM every 60 seconds, on by default.
+- **Temperature/humidity sensor** polls the RM every 60 seconds, on by default.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
 ## Setup and Usage
@@ -27,6 +27,8 @@ remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-bro
 ```bash
 npm install -g homebridge-broadlink-rm-blaster
 ```
+
+### Unlock device
 
 Your Broadlink RM must be unlocked using the official Broadlink app before this
 plugin (or any third-party integration) can control it: new devices ship locked,
