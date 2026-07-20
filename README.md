@@ -115,6 +115,15 @@ Example `config.json` platform block:
 
 Config can also be edited through `homebridge-config-ui-x`.
 
+TVs don't appear automatically alongside your other accessories - HomeKit
+only shows a proper TV tile/remote when it's added as its own accessory, so
+each one needs to be paired separately: after restarting Homebridge, check
+its log for a line like `Please add [name] manually in Home app. Setup
+Code: ...` for each configured TV, then add it in the Home app using that
+code, the same way you'd add any other HomeKit accessory. If you remove a
+TV from your config later, it has to be removed from the Home app manually
+too - Homebridge can't unpair it for you.
+
 ## Debugging
 
 To send a single hex code straight to your RM, bypassing Homebridge/HomeKit
