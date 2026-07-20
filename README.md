@@ -94,3 +94,36 @@ Example `config.json` platform block:
   rapid updates; the actual signal only sends after this long of no movement.
 
 Config can also be edited through `homebridge-config-ui-x`.
+
+## Debugging
+
+To send a single hex code straight to your RM, bypassing Homebridge/HomeKit
+entirely (useful for isolating whether a signal behaves oddly on the device
+itself vs. through the plugin), a `broadlink-rm-blaster` command is installed
+alongside the plugin. Try it first in the Homebridge Config UI X terminal:
+
+```bash
+broadlink-rm-blaster <ip> <hexCode>
+```
+
+Whether this short command resolves depends on how the UI's terminal shell is
+set up — the plugin is installed locally (not globally), so the command only
+exists inside the plugin's own `node_modules/.bin`. If you get a
+"command not found" error, run it with `node` directly instead, using the
+plugin's actual install path (typically
+`/var/lib/homebridge/node_modules/homebridge-broadlink-rm-blaster`):
+
+```bash
+node /var/lib/homebridge/node_modules/homebridge-broadlink-rm-blaster/dist/cli.js <ip> <hexCode>
+```
+
+If plain `node` also isn't found, use the full path to Homebridge's own
+bundled Node.js binary instead (e.g. `/opt/homebridge/bin/node` on a
+self-contained `hb-service` install):
+
+```bash
+/opt/homebridge/bin/node /var/lib/homebridge/node_modules/homebridge-broadlink-rm-blaster/dist/cli.js <ip> <hexCode>
+```
+
+Run `broadlink-rm-blaster --help` (or the equivalent `node ... dist/cli.js --help`)
+for usage details.
