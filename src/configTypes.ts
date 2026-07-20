@@ -25,6 +25,9 @@ export interface DimmerAccessoryConfig {
   defaultBrightnessLevel?: number;
   useMaxBrightnessLevel?: boolean;
   maxBrightnessLevel?: number;
+  useBrightnessUpDownSwitches?: boolean;
+  brightnessSwitchesName?: string;
+  hideBrightnessSlider?: boolean;
   zeroPercentCode: string;
   levels: BrightnessLevelConfig[];
 }

@@ -13,6 +13,7 @@ import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
 import { DimmerAccessory } from './accessories/dimmerAccessory';
+import { BrightnessStepSwitchAccessory } from './accessories/brightnessStepSwitchAccessory';
 import { TemperatureHumiditySensorAccessory } from './accessories/temperatureHumiditySensorAccessory';
 
 export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
@@ -72,10 +73,22 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       }
 
       const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:dimmer:${dimmerConfig.name}`);
-      this.upsertAccessory(uuid, dimmerConfig.name, (accessory) => {
+      const accessory = this.upsertAccessory(uuid, dimmerConfig.name, (accessory) => {
         accessory.context.dimmerConfig = dimmerConfig;
-        new DimmerAccessory(this, accessory, dimmerConfig, ip);
       });
+      const dimmerAccessory = new DimmerAccessory(this, accessory, dimmerConfig, ip);
+
+      if (dimmerConfig.useBrightnessUpDownSwitches) {
+        const switchesName = dimmerConfig.brightnessSwitchesName || dimmerConfig.name;
+
+        const upUuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:dimmer:${dimmerConfig.name}:up`);
+        const upAccessory = this.upsertAccessory(upUuid, `${switchesName} up`, () => {});
+        new BrightnessStepSwitchAccessory(this, upAccessory, dimmerAccessory, 'up', `${switchesName} up`);
+
+        const downUuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:dimmer:${dimmerConfig.name}:down`);
+        const downAccessory = this.upsertAccessory(downUuid, `${switchesName} down`, () => {});
+        new BrightnessStepSwitchAccessory(this, downAccessory, dimmerAccessory, 'down', `${switchesName} down`);
+      }
     }
 
     if (config.showTemperatureHumidity !== false) {
@@ -93,7 +106,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     this.pruneStaleAccessories();
   }
 
-  private upsertAccessory(uuid: string, name: string, setup: (accessory: PlatformAccessory) => void): void {
+  private upsertAccessory(uuid: string, name: string, setup: (accessory: PlatformAccessory) => void): PlatformAccessory {
     this.activeUuids.add(uuid);
 
     const existingAccessory = this.accessories.find((accessory) => accessory.UUID === uuid);
@@ -101,12 +114,14 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     if (existingAccessory) {
       setup(existingAccessory);
       this.api.updatePlatformAccessories([existingAccessory]);
+      return existingAccessory;
     } else {
       this.log.info(`Adding accessory: ${name}`);
       const accessory = new this.api.platformAccessory(name, uuid);
       setup(accessory);
       this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
       this.accessories.push(accessory);
+      return accessory;
     }
   }
 

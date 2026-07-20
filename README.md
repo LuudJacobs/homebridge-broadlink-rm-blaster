@@ -15,7 +15,8 @@ remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-bro
 
 - Basic accessories (Light, Switch, Outlet, Fan) — power on/off via a hex signal.
 - Dimmer lights — one hex signal per discrete brightness level, with optional
-  default/max brightness and "use last known brightness" on power on.
+  default/max brightness and "use last known brightness" on power on. Optional
+  up/down switches step through the levels instead of (or alongside) the slider.
 - Temperature/humidity sensor — polls the RM every 60 seconds, on by default.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
@@ -83,5 +84,9 @@ Example `config.json` platform block:
 - `dimmers[].defaultBrightnessLevel` / `maxBrightnessLevel`: independent target
   percentages, not tied to a specific configured level — the nearest configured
   signal is sent, but the percentage shown in Home stays the configured target.
+- `dimmers[].useBrightnessUpDownSwitches`: adds `<name> up` / `<name> down`
+  switches that step through the configured levels, respecting the max cap.
+  `brightnessSwitchesName` overrides `<name>`; `hideBrightnessSlider` removes
+  the slider entirely so only the switches control brightness.
 
 Config can also be edited through `homebridge-config-ui-x`.

@@ -15,11 +15,14 @@ function candidateLevels(config: DimmerAccessoryConfig): ResolvedLevel[] {
   ];
 }
 
-export function remapToPhysicalPercent(requestedPercent: number, config: DimmerAccessoryConfig): number {
-  const maxPercent = (config.useMaxBrightnessLevel && config.maxBrightnessLevel !== undefined)
+export function getEffectiveMaxPercent(config: DimmerAccessoryConfig): number {
+  return (config.useMaxBrightnessLevel && config.maxBrightnessLevel !== undefined)
     ? config.maxBrightnessLevel
     : 100;
-  return (requestedPercent * maxPercent) / 100;
+}
+
+export function remapToPhysicalPercent(requestedPercent: number, config: DimmerAccessoryConfig): number {
+  return (requestedPercent * getEffectiveMaxPercent(config)) / 100;
 }
 
 export function findNearestLevel(config: DimmerAccessoryConfig, physicalPercent: number): ResolvedLevel {
@@ -61,6 +64,31 @@ export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: R
   return { percent: highest.level, code: highest.code };
 }
 
+export type BrightnessStepDirection = 'up' | 'down';
+
+// Candidates are the configured levels + 0%, capped to the configured max and
+// sorted ascending, so "up" can never step above the cap and both directions
+// just move to the adjacent index in this list.
+export function resolveStepTarget(
+  config: DimmerAccessoryConfig,
+  currentPercent: number,
+  direction: BrightnessStepDirection,
+): ResolvedLevel | undefined {
+  const effectiveMax = getEffectiveMaxPercent(config);
+  const candidates = candidateLevels(config)
+    .filter((level) => level.percent <= effectiveMax)
+    .sort((a, b) => a.percent - b.percent);
+
+  const currentIndex = candidates.reduce((closestIndex, candidate, index) =>
+    Math.abs(candidate.percent - currentPercent) < Math.abs(candidates[closestIndex].percent - currentPercent)
+      ? index
+      : closestIndex,
+  0);
+
+  const targetIndex = direction === 'up' ? currentIndex + 1 : currentIndex - 1;
+  return candidates[targetIndex];
+}
+
 export class DimmerAccessory {
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
@@ -76,9 +104,14 @@ export class DimmerAccessory {
       .onGet(() => this.getOn())
       .onSet((value) => this.setOn(value));
 
-    service.getCharacteristic(this.platform.Characteristic.Brightness)
-      .onGet(() => this.getBrightness())
-      .onSet((value) => this.setBrightness(value));
+    // Hiding the slider only makes sense once the up/down switches are the
+    // way brightness gets controlled - if up/down get turned off later, the
+    // slider should reappear rather than stay permanently hidden.
+    if (!(this.config.useBrightnessUpDownSwitches && this.config.hideBrightnessSlider)) {
+      service.getCharacteristic(this.platform.Characteristic.Brightness)
+        .onGet(() => this.getBrightness())
+        .onSet((value) => this.setBrightness(value));
+    }
   }
 
   // Same assumed-state approach as BasicAccessory: a blaster has no feedback,
@@ -91,12 +124,16 @@ export class DimmerAccessory {
     return Number(this.accessory.context.brightnessPercent ?? 0);
   }
 
+  private async turnOff(): Promise<void> {
+    await this.send(this.config.powerOffCode ?? this.config.zeroPercentCode, 'Power Off');
+    this.accessory.context.on = false;
+  }
+
   private async setOn(value: CharacteristicValue): Promise<void> {
     const on = Boolean(value);
 
     if (!on) {
-      await this.send(this.config.powerOffCode ?? this.config.zeroPercentCode, 'Power Off');
-      this.accessory.context.on = false;
+      await this.turnOff();
       return;
     }
 
@@ -116,12 +153,42 @@ export class DimmerAccessory {
   private async setBrightness(value: CharacteristicValue): Promise<void> {
     const requestedPercent = Number(value);
     const resolved = resolveBrightnessCode(this.config, requestedPercent);
+    const effectiveMax = getEffectiveMaxPercent(this.config);
 
-    await this.send(resolved.code, `Brightness ${requestedPercent}%`);
+    await this.send(resolved.code, `Brightness ${resolved.percent}% (requested: ${requestedPercent}% of ${effectiveMax}%)`);
 
     this.accessory.context.on = true;
     this.accessory.context.brightnessPercent = requestedPercent;
     this.accessory.context.lastKnownLevel = resolved;
+  }
+
+  // Called by BrightnessStepSwitchAccessory - a dimmer's up/down switches are
+  // separate HomeKit accessories, so they hold a reference to this instance
+  // rather than duplicating state via some other cross-accessory channel.
+  async stepBrightness(direction: BrightnessStepDirection): Promise<void> {
+    const currentPercent = this.accessory.context.on ? Number(this.accessory.context.brightnessPercent ?? 0) : 0;
+    const target = resolveStepTarget(this.config, currentPercent, direction);
+
+    if (!target) {
+      return;
+    }
+
+    if (target.percent === 0) {
+      await this.turnOff();
+      this.accessory.getService(this.platform.Service.Lightbulb)
+        ?.updateCharacteristic(this.platform.Characteristic.On, false);
+      return;
+    }
+
+    await this.send(target.code, `Brightness ${target.percent}%`);
+
+    this.accessory.context.on = true;
+    this.accessory.context.brightnessPercent = target.percent;
+    this.accessory.context.lastKnownLevel = target;
+
+    const service = this.accessory.getService(this.platform.Service.Lightbulb);
+    service?.updateCharacteristic(this.platform.Characteristic.On, true);
+    service?.updateCharacteristic(this.platform.Characteristic.Brightness, target.percent);
   }
 
   private async send(code: string, signalName: string): Promise<void> {
