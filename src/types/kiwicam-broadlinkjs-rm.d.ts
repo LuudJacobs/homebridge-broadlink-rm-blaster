@@ -15,6 +15,9 @@ declare module 'kiwicam-broadlinkjs-rm' {
     debug: boolean;
     sendData(data: Buffer, debug?: boolean): Promise<void>;
     authenticate(): void;
+    checkTemperature(): void;
+    once(event: 'temperature', listener: (temperature: number, humidity: number) => void): this;
+    once(event: string, listener: (...args: unknown[]) => void): this;
   }
 
   export default class Broadlink extends EventEmitter {

@@ -6,9 +6,15 @@ import type { Logger } from 'homebridge';
 const MANUAL_RM4_PRO_DEVICE_TYPE = 0x2227;
 const BROADLINK_PORT = 80;
 const AUTH_TIMEOUT_MS = 10_000;
+const READ_TIMEOUT_MS = 10_000;
 
 export function parseHexCode(hexCode: string): Buffer {
   return Buffer.from(hexCode.replace(/\s+/g, ''), 'hex');
+}
+
+export interface TemperatureHumidityReading {
+  temperature: number;
+  humidity: number;
 }
 
 export class BroadlinkClient {
@@ -50,5 +56,22 @@ export class BroadlinkClient {
   async sendCode(ip: string, hexCode: string): Promise<void> {
     const device = await this.getDevice(ip);
     await device.sendData(parseHexCode(hexCode));
+  }
+
+  async readTemperatureHumidity(ip: string): Promise<TemperatureHumidityReading> {
+    const device = await this.getDevice(ip);
+
+    return new Promise<TemperatureHumidityReading>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`Timed out reading temperature/humidity from ${ip}`));
+      }, READ_TIMEOUT_MS);
+
+      device.once('temperature', (temperature, humidity) => {
+        clearTimeout(timeout);
+        resolve({ temperature, humidity });
+      });
+
+      device.checkTemperature();
+    });
   }
 }
