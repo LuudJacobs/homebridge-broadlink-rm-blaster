@@ -6,7 +6,11 @@ declare module 'kiwicam-broadlinkjs-rm' {
     port: number;
   }
 
-  export class Device extends EventEmitter {
+  // Device does NOT actually extend EventEmitter at runtime - its constructor
+  // creates an internal `this.emitter = new EventEmitter()` and only copies
+  // over `on`, `emit`, and `removeListener` (not `once`, `off`, etc). Declaring
+  // only what's really there so we don't call something that doesn't exist.
+  export class Device {
     host: Host;
     mac: Buffer;
     type: number;
@@ -16,8 +20,10 @@ declare module 'kiwicam-broadlinkjs-rm' {
     sendData(data: Buffer, debug?: boolean): Promise<void>;
     authenticate(): void;
     checkTemperature(): void;
-    once(event: 'temperature', listener: (temperature: number, humidity: number) => void): this;
-    once(event: string, listener: (...args: unknown[]) => void): this;
+    on(event: 'temperature', listener: (temperature: number, humidity: number) => void): this;
+    on(event: string, listener: (...args: unknown[]) => void): this;
+    removeListener(event: 'temperature', listener: (temperature: number, humidity: number) => void): this;
+    removeListener(event: string, listener: (...args: unknown[]) => void): this;
   }
 
   export default class Broadlink extends EventEmitter {
