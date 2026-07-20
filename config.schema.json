@@ -13,6 +13,23 @@
         "required": true,
         "description": "Used by any accessory below that doesn't specify its own IP address."
       },
+      "showTemperatureHumidity": {
+        "title": "Show temperature and humidity if available",
+        "type": "boolean",
+        "default": true,
+        "required": false,
+        "description": "Not all RM4 Pro units report real sensor data. If yours doesn't, this sensor will just show \"No Response\" in Home."
+      },
+      "temperatureSensorIp": {
+        "title": "Temperature/Humidity Sensor IP Address",
+        "type": "string",
+        "format": "ipv4",
+        "required": false,
+        "description": "Overrides the default IP address above. Leave empty to use the default.",
+        "condition": {
+          "functionBody": "return model.showTemperatureHumidity === true;"
+        }
+      },
       "accessories": {
         "title": "Accessories",
         "type": "array",
@@ -165,7 +182,7 @@
     {
       "type": "fieldset",
       "title": "General",
-      "items": ["defaultIp"]
+      "items": ["defaultIp", "showTemperatureHumidity", "temperatureSensorIp"]
     },
     {
       "type": "array",
