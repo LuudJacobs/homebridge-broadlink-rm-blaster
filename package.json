@@ -1,6 +1,6 @@
 {
   "name": "homebridge-broadlink-rm-blaster",
-  "version": "0.7.10",
+  "version": "0.7.11",
   "description": "Blast RF and IR signals from Broadlink RM using Homebridge",
   "license": "MIT",
   "repository": {
@@ -30,6 +30,7 @@
     "prepare": "npm run build",
     "watch": "npm run build && homebridge -D",
     "lint": "eslint src test",
+    "send-code": "node scripts/send-code.js",
     "test": "rimraf dist-test && tsc -p tsconfig.test.json && node --test \"dist-test/test/**/*.test.js\"",
     "prepublishOnly": "npm run lint && npm run build"
   },
