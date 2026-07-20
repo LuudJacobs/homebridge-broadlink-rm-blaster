@@ -1,8 +1,8 @@
 import type { API } from 'homebridge';
 
 import { PLATFORM_NAME } from './settings';
-import { BroadlinkRM4ProBlasterPlatform } from './platform';
+import { BroadlinkRMBlasterPlatform } from './platform';
 
 export = (api: API): void => {
-  api.registerPlatform(PLATFORM_NAME, BroadlinkRM4ProBlasterPlatform);
+  api.registerPlatform(PLATFORM_NAME, BroadlinkRMBlasterPlatform);
 };

@@ -15,7 +15,7 @@ import { BasicAccessory } from './accessories/basicAccessory';
 import { DimmerAccessory } from './accessories/dimmerAccessory';
 import { TemperatureHumiditySensorAccessory } from './accessories/temperatureHumiditySensorAccessory';
 
-export class BroadlinkRM4ProBlasterPlatform implements DynamicPlatformPlugin {
+export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service;
   public readonly Characteristic: typeof Characteristic;
 
@@ -84,7 +84,7 @@ export class BroadlinkRM4ProBlasterPlatform implements DynamicPlatformPlugin {
         this.log.warn('Skipping temperature/humidity sensor: no IP address configured (set "temperatureSensorIp" or "defaultIp")');
       } else {
         const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:sensor`);
-        this.upsertAccessory(uuid, 'RM4 Pro Sensor', (accessory) => {
+        this.upsertAccessory(uuid, 'RM Sensor', (accessory) => {
           new TemperatureHumiditySensorAccessory(this, accessory, ip);
         });
       }

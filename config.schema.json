@@ -1,13 +1,13 @@
 {
-  "pluginAlias": "BroadlinkRM4ProBlaster",
+  "pluginAlias": "BroadlinkRMBlaster",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Blasts pre-recorded IR/RF hex signals via a Broadlink RM4 Pro. Signals must be captured elsewhere (this plugin does not learn or discover devices).",
+  "headerDisplay": "Blasts pre-recorded IR/RF hex signals via a Broadlink RM. Signals must be captured elsewhere (this plugin does not learn or discover devices).",
   "schema": {
     "type": "object",
     "properties": {
       "defaultIp": {
-        "title": "Default RM4 Pro IP Address",
+        "title": "Default RM IP Address",
         "type": "string",
         "format": "ipv4",
         "required": true,
@@ -18,7 +18,7 @@
         "type": "boolean",
         "default": true,
         "required": false,
-        "description": "Not all RM4 Pro units report real sensor data. If yours doesn't, this sensor will just show \"No Response\" in Home."
+        "description": "Not all RM units report real sensor data. If yours doesn't, this sensor will just show \"No Response\" in Home."
       },
       "temperatureSensorIp": {
         "title": "Temperature/Humidity Sensor IP Address",

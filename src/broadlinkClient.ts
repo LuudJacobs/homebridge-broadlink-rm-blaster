@@ -1,9 +1,9 @@
 import Broadlink, { Device } from 'kiwicam-broadlinkjs-rm';
 import type { Logger } from 'homebridge';
 
-// Device type code the library reserves for a manually added RM4 Pro (RF capable),
+// Device type code the library reserves for a manually added RM (RF capable),
 // used when connecting directly by IP instead of relying on UDP discovery.
-const MANUAL_RM4_PRO_DEVICE_TYPE = 0x2227;
+const MANUAL_RM_DEVICE_TYPE = 0x2227;
 const BROADLINK_PORT = 80;
 const AUTH_TIMEOUT_MS = 10_000;
 const READ_TIMEOUT_MS = 10_000;
@@ -31,7 +31,7 @@ export class BroadlinkClient {
 
     devicePromise = new Promise<Device>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        reject(new Error(`Timed out authenticating with Broadlink RM4 Pro at ${ip}`));
+        reject(new Error(`Timed out authenticating with Broadlink RM at ${ip}`));
       }, AUTH_TIMEOUT_MS);
 
       const onReady = (device: Device) => {
@@ -40,12 +40,12 @@ export class BroadlinkClient {
         }
         clearTimeout(timeout);
         this.broadlink.removeListener('deviceReady', onReady);
-        this.log.info(`Connected to Broadlink RM4 Pro at ${ip}`);
+        this.log.info(`Connected to Broadlink RM at ${ip}`);
         resolve(device);
       };
 
       this.broadlink.on('deviceReady', onReady);
-      this.broadlink.addDevice({ address: ip, port: BROADLINK_PORT }, Buffer.alloc(6, 0), MANUAL_RM4_PRO_DEVICE_TYPE);
+      this.broadlink.addDevice({ address: ip, port: BROADLINK_PORT }, Buffer.alloc(6, 0), MANUAL_RM_DEVICE_TYPE);
     });
 
     devicePromise.catch(() => this.devices.delete(ip));
