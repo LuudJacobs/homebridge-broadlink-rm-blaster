@@ -8,10 +8,13 @@ export interface ResolvedLevel {
   code: string;
 }
 
+const DEFAULT_DEBOUNCE_SECONDS = 0.5;
+
 function candidateLevels(config: DimmerAccessoryConfig): ResolvedLevel[] {
   return [
     { percent: 0, code: config.zeroPercentCode },
     ...config.levels.map((level) => ({ percent: level.level, code: level.code })),
+    { percent: 100, code: config.hundredPercentCode },
   ];
 }
 
@@ -60,15 +63,17 @@ export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: R
     return { percent, code: findNearestLevel(config, percent).code };
   }
 
-  const highest = config.levels.reduce((a, b) => (b.level > a.level ? b : a));
-  return { percent: highest.level, code: highest.code };
+  // A guaranteed 100% candidate always exists (hundredPercentCode is
+  // required), so "highest" is now definitionally the true 100% signal
+  // rather than whatever happened to be the highest configured level.
+  return { percent: 100, code: config.hundredPercentCode };
 }
 
 export type BrightnessStepDirection = 'up' | 'down';
 
-// Candidates are the configured levels + 0%, capped to the configured max and
-// sorted ascending, so "up" can never step above the cap and both directions
-// just move to the adjacent index in this list.
+// Candidates are the configured levels + the required 0%/100% boundaries,
+// capped to the configured max and sorted ascending, so "up" can never step
+// above the cap and both directions just move to the adjacent index here.
 export function resolveStepTarget(
   config: DimmerAccessoryConfig,
   currentPercent: number,
@@ -90,6 +95,8 @@ export function resolveStepTarget(
 }
 
 export class DimmerAccessory {
+  private brightnessDebounceTimer?: NodeJS.Timeout;
+
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
@@ -124,7 +131,15 @@ export class DimmerAccessory {
     return Number(this.accessory.context.brightnessPercent ?? 0);
   }
 
+  private clearBrightnessDebounce(): void {
+    if (this.brightnessDebounceTimer) {
+      clearTimeout(this.brightnessDebounceTimer);
+      this.brightnessDebounceTimer = undefined;
+    }
+  }
+
   private async turnOff(): Promise<void> {
+    this.clearBrightnessDebounce();
     await this.send(this.config.powerOffCode ?? this.config.zeroPercentCode, 'Power Off');
     this.accessory.context.on = false;
   }
@@ -136,6 +151,8 @@ export class DimmerAccessory {
       await this.turnOff();
       return;
     }
+
+    this.clearBrightnessDebounce();
 
     const lastKnown = this.accessory.context.lastKnownLevel as ResolvedLevel | undefined;
     const resolved = resolvePowerOnLevel(this.config, lastKnown);
@@ -150,22 +167,37 @@ export class DimmerAccessory {
       ?.updateCharacteristic(this.platform.Characteristic.Brightness, resolved.percent);
   }
 
-  private async setBrightness(value: CharacteristicValue): Promise<void> {
+  // Debounced: a slider drag in the Home app fires many rapid onSet calls, so
+  // the actual send() is deferred until debounceSeconds of silence, reset on
+  // every call. Display state (and "last known brightness") updates
+  // immediately/optimistically so the slider itself tracks the drag smoothly
+  // and doesn't lag behind while the send is pending.
+  private setBrightness(value: CharacteristicValue): void {
     const requestedPercent = Number(value);
     const resolved = resolveBrightnessCode(this.config, requestedPercent);
     const effectiveMax = getEffectiveMaxPercent(this.config);
 
-    await this.send(resolved.code, `Brightness ${resolved.percent}% (requested: ${requestedPercent}% of ${effectiveMax}%)`);
-
     this.accessory.context.on = true;
     this.accessory.context.brightnessPercent = requestedPercent;
     this.accessory.context.lastKnownLevel = resolved;
+
+    this.clearBrightnessDebounce();
+    const debounceMs = (this.config.debounceSeconds ?? DEFAULT_DEBOUNCE_SECONDS) * 1000;
+    this.brightnessDebounceTimer = setTimeout(() => {
+      this.brightnessDebounceTimer = undefined;
+      this.send(resolved.code, `Brightness ${resolved.percent}% (requested: ${requestedPercent}% of ${effectiveMax}%)`)
+        .catch(() => {
+          // send() already logs the failure; there's no live characteristic
+          // write left to report it back to by the time this timer fires.
+        });
+    }, debounceMs);
   }
 
   // Called by BrightnessStepSwitchAccessory - a dimmer's up/down switches are
   // separate HomeKit accessories, so they hold a reference to this instance
   // rather than duplicating state via some other cross-accessory channel.
   async stepBrightness(direction: BrightnessStepDirection): Promise<void> {
+    this.clearBrightnessDebounce();
     const currentPercent = this.accessory.context.on ? Number(this.accessory.context.brightnessPercent ?? 0) : 0;
     const target = resolveStepTarget(this.config, currentPercent, direction);
 

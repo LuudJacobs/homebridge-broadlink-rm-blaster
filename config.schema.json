@@ -151,6 +151,20 @@
               "required": true,
               "description": "Hex code for the lowest (0%) brightness level."
             },
+            "hundredPercentCode": {
+              "title": "Brightness 100% Signal",
+              "type": "string",
+              "required": true,
+              "description": "Hex code for true 100% brightness. Always the actual full-brightness signal, regardless of any max brightness cap set above."
+            },
+            "debounceSeconds": {
+              "title": "Debounce (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "default": 0.5,
+              "required": false,
+              "description": "Wait this long after the slider stops moving before sending a signal, so dragging doesn't blast every intermediate position."
+            },
             "useBrightnessUpDownSwitches": {
               "title": "Add Brightness Up/Down Switches",
               "type": "boolean",
@@ -236,6 +250,8 @@
         "dimmers[].useMaxBrightnessLevel",
         "dimmers[].maxBrightnessLevel",
         "dimmers[].zeroPercentCode",
+        "dimmers[].hundredPercentCode",
+        "dimmers[].debounceSeconds",
         "dimmers[].useBrightnessUpDownSwitches",
         "dimmers[].brightnessSwitchesName",
         "dimmers[].hideBrightnessSlider",

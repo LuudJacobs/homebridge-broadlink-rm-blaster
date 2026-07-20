@@ -29,6 +29,8 @@ export interface DimmerAccessoryConfig {
   brightnessSwitchesName?: string;
   hideBrightnessSlider?: boolean;
   zeroPercentCode: string;
+  hundredPercentCode: string;
+  debounceSeconds?: number;
   levels: BrightnessLevelConfig[];
 }
 
