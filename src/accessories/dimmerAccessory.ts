@@ -80,6 +80,26 @@ export function resolvePowerOnLevel(config: DimmerAccessoryConfig, lastKnown?: R
 export class DimmerAccessory {
   private brightnessDebounceTimer?: NodeJS.Timeout;
 
+  // Bumped by any explicit brightness/off action (setBrightness, turnOff).
+  // setOn's own resolved default/last-known/max level is only a guess made
+  // in the absence of a real request - if the user actually turned on by
+  // dragging the slider itself (HomeKit sends On=true and Brightness=X for
+  // the same gesture), setBrightness's onSet can fire while setOn's "Power
+  // On" send is still in flight, and setOn must recognize its guess has been
+  // superseded rather than blast/display it on top of the real request.
+  //
+  // This only guards the async gap of the Power On send itself (tens of
+  // ms) - deliberately narrow. A wider, debounce-length delay before
+  // sending the guessed level was tried (v0.7.4) and had to be reverted:
+  // real-hardware testing showed it introduced a gap between Power On and
+  // the level signal that the physical (KAKU-style RF) dimmer no longer
+  // recognized as one combined "turn on to level X" gesture, causing the
+  // receiver to become unresponsive after a few actions. Sending both
+  // signals back-to-back, immediately, is what real-hardware testing has
+  // shown to actually work reliably - this guard only trims the display-sync
+  // edge case on top of that, it doesn't relax the immediacy.
+  private brightnessActionId = 0;
+
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
@@ -118,6 +138,7 @@ export class DimmerAccessory {
 
   private async turnOff(): Promise<void> {
     this.clearBrightnessDebounce();
+    this.brightnessActionId++;
     await this.send(this.config.powerOffCode, 'Power Off');
     this.accessory.context.on = false;
   }
@@ -136,37 +157,30 @@ export class DimmerAccessory {
     const resolved = resolvePowerOnLevel(this.config, lastKnown);
     const effectiveMax = getEffectiveMaxPercent(this.config);
     const nearestPercent = findLevelByCode(this.config, resolved.code)?.percent ?? resolved.percent;
+    const myActionId = ++this.brightnessActionId;
 
     await this.send(this.config.powerOnCode, 'Power On');
     this.accessory.context.on = true;
 
-    // Power On only turns the light on - it doesn't carry a brightness
-    // level, so the resolved level's own signal has to be sent separately
-    // for the device to actually reach it. But if the user is actually
-    // turning on by dragging the slider itself (HomeKit sends On=true and
-    // Brightness=X for the same gesture), setBrightness's onSet for the
-    // real target can arrive anywhere up to roughly a debounce window after
-    // Power On - not necessarily within the single Power On send's own
-    // await, which was too narrow a window to reliably catch it. Routing
-    // this guessed level through the same debounce timer setBrightness
-    // uses means any real request within that window clears it via the
-    // existing clearBrightnessDebounce() call, the same way a newer slider
-    // position cancels an older pending one.
-    const debounceMs = (this.config.debounceSeconds ?? DEFAULT_DEBOUNCE_SECONDS) * 1000;
-    this.brightnessDebounceTimer = setTimeout(() => {
-      this.brightnessDebounceTimer = undefined;
-      this.send(resolved.code, `Brightness ${nearestPercent}% (requested: ${resolved.percent}% of ${effectiveMax}%)`)
-        .then(() => {
-          this.accessory.context.brightnessPercent = resolved.percent;
-          this.accessory.context.lastKnownLevel = resolved;
-          this.accessory.getService(this.platform.Service.Lightbulb)
-            ?.updateCharacteristic(this.platform.Characteristic.Brightness, resolved.percent);
-        })
-        .catch(() => {
-          // send() already logs the failure; there's no live characteristic
-          // write left to report it back to by the time this timer fires.
-        });
-    }, debounceMs);
+    if (this.brightnessActionId !== myActionId) {
+      // A real Brightness request (e.g. dragging the slider straight up
+      // from off) arrived while "Power On" was still in flight and has
+      // already taken over - don't blast or display this guessed level on
+      // top of it.
+      return;
+    }
+
+    // Power On only turns the light on - it doesn't carry a brightness level,
+    // so the resolved level's own signal has to be sent right away too, for
+    // the device to actually reach it. This has to stay immediate/back-to-back
+    // with Power On, not deferred - see the comment on brightnessActionId.
+    await this.send(resolved.code, `Brightness ${nearestPercent}% (requested: ${resolved.percent}% of ${effectiveMax}%)`);
+
+    this.accessory.context.brightnessPercent = resolved.percent;
+    this.accessory.context.lastKnownLevel = resolved;
+
+    this.accessory.getService(this.platform.Service.Lightbulb)
+      ?.updateCharacteristic(this.platform.Characteristic.Brightness, resolved.percent);
   }
 
   // Debounced: a slider drag in the Home app fires many rapid onSet calls, so
@@ -175,6 +189,8 @@ export class DimmerAccessory {
   // immediately/optimistically so the slider itself tracks the drag smoothly
   // and doesn't lag behind while the send is pending.
   private setBrightness(value: CharacteristicValue): void {
+    this.brightnessActionId++;
+
     const requestedPercent = Number(value);
     const resolved = resolveBrightnessCode(this.config, requestedPercent);
     const effectiveMax = getEffectiveMaxPercent(this.config);
