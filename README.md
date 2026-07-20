@@ -19,11 +19,15 @@ remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-bro
 - Temperature/humidity sensor — polls the RM every 60 seconds, on by default.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
-## Installation
+## Setup
 
 ```bash
 npm install -g homebridge-broadlink-rm-blaster
 ```
+
+Your Broadlink RM must be unlocked using the official Broadlink app before this
+plugin (or any third-party integration) can control it — new devices ship locked,
+which blocks local API access.
 
 ## Configuration
 
