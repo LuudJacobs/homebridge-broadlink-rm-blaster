@@ -165,31 +165,6 @@
               "required": false,
               "description": "Wait this long after the slider stops moving before sending a signal, so dragging doesn't blast every intermediate position."
             },
-            "useBrightnessUpDownSwitches": {
-              "title": "Add Brightness Up/Down Switches",
-              "type": "boolean",
-              "required": false,
-              "description": "Exposes two extra switches that step through the brightness levels below, as an alternative to the slider."
-            },
-            "brightnessSwitchesName": {
-              "title": "Up/Down Switches Name",
-              "type": "string",
-              "required": false,
-              "description": "Leave empty to use this dimmer's own name.",
-              "condition": {
-                "functionBody": "return model.dimmers && model.dimmers[arrayIndices] && model.dimmers[arrayIndices].useBrightnessUpDownSwitches === true;"
-              }
-            },
-            "hideBrightnessSlider": {
-              "title": "Don't Show Slider",
-              "type": "boolean",
-              "default": false,
-              "required": false,
-              "description": "Hide this dimmer's brightness slider so only the up/down switches control the level.",
-              "condition": {
-                "functionBody": "return model.dimmers && model.dimmers[arrayIndices] && model.dimmers[arrayIndices].useBrightnessUpDownSwitches === true;"
-              }
-            },
             "levels": {
               "title": "Brightness Levels",
               "type": "array",
@@ -252,9 +227,6 @@
         "dimmers[].zeroPercentCode",
         "dimmers[].hundredPercentCode",
         "dimmers[].debounceSeconds",
-        "dimmers[].useBrightnessUpDownSwitches",
-        "dimmers[].brightnessSwitchesName",
-        "dimmers[].hideBrightnessSlider",
         {
           "type": "array",
           "key": "dimmers[].levels",
