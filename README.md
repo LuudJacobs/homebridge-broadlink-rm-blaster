@@ -1,29 +1,23 @@
 # homebridge-broadlink-rm-blaster
 
-Blast RF and IR signals from a Broadlink RM using Homebridge. This plugin sends
-pre-recorded hex signals to a known device IP — it does not learn signals or
-autodiscover the Broadlink device.
+Blast RF and IR signals from a Broadlink RM using Homebridge. Inspired by
+[homebridge-broadlink-rm](https://github.com/kiwi-cam/homebridge-broadlink-rm#readme),
+built on [kiwicam-broadlinkjs-rm](https://www.npmjs.com/package/kiwicam-broadlinkjs-rm)
+for the underlying device communication.
 
-## Current feature set (v0.3.2)
+This plugin sends pre-recorded hex signals to a known device IP — it does not learn
+signals or autodiscover the Broadlink device. To capture hex codes from your own
+remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
 
-- A "basic accessory" type exposed as a Light, Switch, Outlet, or Fan in Apple Home.
-- A dimmer light: one hex signal per discrete brightness level (plus a required 0%
-  signal). A live slider request is matched to the nearest configured level. A
-  configured max brightness percentage remaps the 0-100% slider onto that physical
-  range (e.g. max=50%: sliding to 100% sends the 50% signal, sliding to 50% sends the
-  nearest level to 25%). Turning on resolves an assumed brightness in this order:
-  last-known (if enabled) → configured default percentage → configured max
-  percentage → highest configured level. The default percentage is on the same
-  logical 0-100 scale as the slider, so it's remapped through the configured max
-  too — it can never physically exceed the max cap.
-- Power On/Off (and brightness) is sent as a hex signal to the RM. Since a
-  blaster has no feedback, the state shown in Home is assumed, not a real reading.
-- A temperature/humidity sensor accessory, on by default, polling the RM every
-  60 seconds. Not all RM units actually report real sensor data — if yours
-  doesn't, it shows "No Response" in Home rather than a fake reading. Turn it off
-  with `showTemperatureHumidity: false` if you don't want it at all.
+> This project was vibe coded using Claude.
 
-Not yet implemented: TV accessory.
+## Usage
+
+- Basic accessories (Light, Switch, Outlet, Fan) — power on/off via a hex signal.
+- Dimmer lights — one hex signal per discrete brightness level, with optional
+  default/max brightness and "use last known brightness" on power on.
+- Temperature/humidity sensor — polls the RM every 60 seconds, on by default.
+- Fully configurable via the Homebridge Config UI X plugin settings form.
 
 ## Installation
 
