@@ -35,6 +35,14 @@ export function findNearestLevel(config: DimmerAccessoryConfig, physicalPercent:
   );
 }
 
+// resolvePowerOnLevel's own `percent` is deliberately the admin's configured
+// target, not the actual signal's percent (see its comment below) - this
+// looks the real candidate back up by its code so logs can show what was
+// actually sent, the same way setBrightness's log already does.
+function findLevelByCode(config: DimmerAccessoryConfig, code: string): ResolvedLevel | undefined {
+  return candidateLevels(config).find((level) => level.code === code);
+}
+
 // Translates a logical 0-100 request into a physical percent (via the
 // configured max, if any) before matching it to a configured signal. Used for
 // live slider requests and for the "default brightness" power-on tier below,
@@ -126,12 +134,14 @@ export class DimmerAccessory {
 
     const lastKnown = this.accessory.context.lastKnownLevel as ResolvedLevel | undefined;
     const resolved = resolvePowerOnLevel(this.config, lastKnown);
+    const effectiveMax = getEffectiveMaxPercent(this.config);
+    const nearestPercent = findLevelByCode(this.config, resolved.code)?.percent ?? resolved.percent;
 
     // Power On only turns the light on - it doesn't carry a brightness level,
     // so the resolved level's own signal has to be sent separately for the
     // device to actually reach it, not just HomeKit's assumed display state.
     await this.send(this.config.powerOnCode, 'Power On');
-    await this.send(resolved.code, `Brightness ${resolved.percent}%`);
+    await this.send(resolved.code, `Brightness ${nearestPercent}% (requested: ${resolved.percent}% of ${effectiveMax}%)`);
 
     this.accessory.context.on = true;
     this.accessory.context.brightnessPercent = resolved.percent;
