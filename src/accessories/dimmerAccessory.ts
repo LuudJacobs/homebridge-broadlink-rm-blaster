@@ -153,7 +153,7 @@ export class DimmerAccessory {
 
   private async turnOff(): Promise<void> {
     this.clearBrightnessDebounce();
-    await this.send(this.config.powerOffCode ?? this.config.zeroPercentCode, 'Power Off');
+    await this.send(this.config.powerOffCode, 'Power Off');
     this.accessory.context.on = false;
   }
 
@@ -170,7 +170,7 @@ export class DimmerAccessory {
     const lastKnown = this.accessory.context.lastKnownLevel as ResolvedLevel | undefined;
     const resolved = resolvePowerOnLevel(this.config, lastKnown);
 
-    await this.send(this.config.powerOnCode ?? resolved.code, 'Power On');
+    await this.send(this.config.powerOnCode, 'Power On');
 
     this.accessory.context.on = true;
     this.accessory.context.brightnessPercent = resolved.percent;

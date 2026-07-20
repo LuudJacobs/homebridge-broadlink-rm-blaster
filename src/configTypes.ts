@@ -18,8 +18,8 @@ export interface BrightnessLevelConfig {
 export interface DimmerAccessoryConfig {
   name: string;
   ip?: string;
-  powerOnCode?: string;
-  powerOffCode?: string;
+  powerOnCode: string;
+  powerOffCode: string;
   useLastKnownBrightness?: boolean;
   useDefaultBrightnessLevel?: boolean;
   defaultBrightnessLevel?: number;

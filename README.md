@@ -56,6 +56,8 @@ Example `config.json` platform block:
   "dimmers": [
     {
       "name": "Bedroom Dimmer",
+      "powerOnCode": "2600...",
+      "powerOffCode": "2600...",
       "zeroPercentCode": "2600...",
       "hundredPercentCode": "2600...",
       "debounceSeconds": 0.5,
@@ -80,8 +82,10 @@ Example `config.json` platform block:
   sensor accessory entirely. `temperatureSensorIp` overrides `defaultIp` for it.
 - `accessories[].powerOffCode`: optional; if omitted, the power-on signal is
   reused for both on and off (useful for toggle-only remotes).
-- `dimmers[].powerOnCode`: optional; if omitted, turning on just sends the
-  resolved brightness level's own signal.
+- `dimmers[].powerOnCode` / `powerOffCode`: required, and always used for
+  powering on/off, regardless of the resolved brightness level (some RF
+  receivers only fully cycle on/off with their own dedicated signal - a
+  brightness-level signal isn't a reliable substitute).
 - `dimmers[].defaultBrightnessLevel` / `maxBrightnessLevel`: independent target
   percentages, not tied to a specific configured level — the nearest configured
   signal is sent, but the percentage shown in Home stays the configured target.
