@@ -31,10 +31,29 @@ export interface DimmerAccessoryConfig {
   levels: BrightnessLevelConfig[];
 }
 
+export interface TvAccessoryConfig {
+  name: string;
+  ip?: string;
+  powerOnCode: string;
+  powerOffCode?: string;
+  volumeUpCode?: string;
+  volumeDownCode?: string;
+  muteCode?: string;
+  arrowUpCode?: string;
+  arrowDownCode?: string;
+  arrowLeftCode?: string;
+  arrowRightCode?: string;
+  selectCode?: string;
+  infoCode?: string;
+  backCode?: string;
+  exitCode?: string;
+}
+
 export interface BlasterPlatformConfig extends PlatformConfig {
   defaultIp: string;
   showTemperatureHumidity?: boolean;
   temperatureSensorIp?: string;
   accessories?: BasicAccessoryConfig[];
   dimmers?: DimmerAccessoryConfig[];
+  tvs?: TvAccessoryConfig[];
 }
