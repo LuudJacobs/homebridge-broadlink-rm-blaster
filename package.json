@@ -1,9 +1,10 @@
 {
   "name": "homebridge-broadlink-rm-blaster",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "Blast RF and IR signals from Broadlink RM devices using Homebridge",
-  "author": "Luud Jacobs <post@luudjacobs.nl>",
+  "author": "Luud Jacobs",
   "license": "MIT",
+  "homepage": "https://github.com/LuudJacobs/homebridge-broadlink-rm-blaster#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/LuudJacobs/homebridge-broadlink-rm-blaster.git"
