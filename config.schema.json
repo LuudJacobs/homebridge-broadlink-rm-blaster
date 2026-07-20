@@ -96,14 +96,14 @@
             "powerOnCode": {
               "title": "Power On Signal",
               "type": "string",
-              "required": false,
-              "description": "Hex code sent to turn the light on. Leave empty to just send the resolved brightness level's signal instead."
+              "required": true,
+              "description": "Hex code sent to turn the light on. Always used for powering on, regardless of the resolved brightness level."
             },
             "powerOffCode": {
               "title": "Power Off Signal",
               "type": "string",
-              "required": false,
-              "description": "Hex code sent to turn the light off. Leave empty to reuse the Brightness 0% signal."
+              "required": true,
+              "description": "Hex code sent to turn the light off. Always used, instead of the Brightness 0% signal."
             },
             "useLastKnownBrightness": {
               "title": "Use Last Known Brightness",
