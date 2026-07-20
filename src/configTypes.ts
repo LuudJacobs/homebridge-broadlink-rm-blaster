@@ -31,6 +31,8 @@ export interface DimmerAccessoryConfig {
 
 export interface BlasterPlatformConfig extends PlatformConfig {
   defaultIp: string;
+  showTemperatureHumidity?: boolean;
+  temperatureSensorIp?: string;
   accessories?: BasicAccessoryConfig[];
   dimmers?: DimmerAccessoryConfig[];
 }

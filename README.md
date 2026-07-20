@@ -4,7 +4,7 @@ Blast RF and IR signals from a Broadlink RM4 Pro using Homebridge. This plugin s
 pre-recorded hex signals to a known device IP — it does not learn signals or
 autodiscover the Broadlink device.
 
-## Current feature set (v0.2.3)
+## Current feature set (v0.3.0)
 
 - A "basic accessory" type exposed as a Light, Switch, Outlet, or Fan in Apple Home.
 - A dimmer light: one hex signal per discrete brightness level (plus a required 0%
@@ -18,6 +18,10 @@ autodiscover the Broadlink device.
   too — it can never physically exceed the max cap.
 - Power On/Off (and brightness) is sent as a hex signal to the RM4 Pro. Since a
   blaster has no feedback, the state shown in Home is assumed, not a real reading.
+- A temperature/humidity sensor accessory, on by default, polling the RM4 Pro every
+  60 seconds. Not all RM4 Pro units actually report real sensor data — if yours
+  doesn't, it shows "No Response" in Home rather than a fake reading. Turn it off
+  with `showTemperatureHumidity: false` if you don't want it at all.
 
 Not yet implemented: TV accessory.
 
@@ -35,6 +39,7 @@ Example `config.json` platform block:
 {
   "platform": "BroadlinkRM4ProBlaster",
   "defaultIp": "192.168.1.50",
+  "showTemperatureHumidity": true,
   "accessories": [
     {
       "name": "Living Room Lamp",
@@ -71,6 +76,8 @@ Example `config.json` platform block:
 
 - `defaultIp`: IP address of your Broadlink RM4 Pro, used when an accessory
   doesn't specify its own `ip`.
+- `showTemperatureHumidity`: defaults to `true`. Set to `false` to remove the
+  sensor accessory entirely. `temperatureSensorIp` overrides `defaultIp` for it.
 - `accessories[].powerOffCode`: optional; if omitted, the power-on signal is
   reused for both on and off (useful for toggle-only remotes).
 - `dimmers[].powerOnCode`: optional; if omitted, turning on just sends the
