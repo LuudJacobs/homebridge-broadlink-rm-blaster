@@ -6,28 +6,35 @@
   "schema": {
     "type": "object",
     "properties": {
-      "defaultIp": {
-        "title": "Default RM IP Address",
-        "type": "string",
-        "format": "ipv4",
+      "rmDevices": {
+        "title": "Broadlink RM Devices",
+        "type": "array",
+        "minItems": 1,
         "required": true,
-        "description": "Used by any accessory below that doesn't specify its own IP address."
-      },
-      "showTemperatureHumidity": {
-        "title": "Show temperature and humidity if available",
-        "type": "boolean",
-        "default": true,
-        "required": false,
-        "description": "Not all RM units report real sensor data. If yours doesn't, this sensor will just show \"No Response\" in Home."
-      },
-      "temperatureSensorIp": {
-        "title": "Temperature/Humidity Sensor IP Address",
-        "type": "string",
-        "format": "ipv4",
-        "required": false,
-        "description": "Overrides the default IP address above. Leave empty to use the default.",
-        "condition": {
-          "functionBody": "return model.showTemperatureHumidity === true;"
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true,
+              "default": "Default RM",
+              "description": "Referenced by name from each accessory below - must be unique."
+            },
+            "ip": {
+              "title": "IP Address",
+              "type": "string",
+              "format": "ipv4",
+              "required": true
+            },
+            "enableTemperatureHumidity": {
+              "title": "Show temperature and humidity if available",
+              "type": "boolean",
+              "default": true,
+              "required": false,
+              "description": "Not all RM units report real sensor data. If yours doesn't, this sensor will just show \"No Response\" in Home."
+            }
+          }
         }
       },
       "accessories": {
@@ -41,12 +48,12 @@
               "type": "string",
               "required": true
             },
-            "ip": {
-              "title": "IP Address",
+            "rmDevice": {
+              "title": "RM Device",
               "type": "string",
-              "format": "ipv4",
-              "required": false,
-              "description": "Overrides the default IP address above. Leave empty to use the default."
+              "required": true,
+              "default": "Default RM",
+              "description": "Must match the Name of one of the RM devices configured above."
             },
             "accessoryType": {
               "title": "Accessory Type",
@@ -86,12 +93,12 @@
               "type": "string",
               "required": true
             },
-            "ip": {
-              "title": "IP Address",
+            "rmDevice": {
+              "title": "RM Device",
               "type": "string",
-              "format": "ipv4",
-              "required": false,
-              "description": "Overrides the default IP address above. Leave empty to use the default."
+              "required": true,
+              "default": "Default RM",
+              "description": "Must match the Name of one of the RM devices configured above."
             },
             "powerOnCode": {
               "title": "Power On Signal",
@@ -201,12 +208,12 @@
               "type": "string",
               "required": true
             },
-            "ip": {
-              "title": "IP Address",
+            "rmDevice": {
+              "title": "RM Device",
               "type": "string",
-              "format": "ipv4",
-              "required": false,
-              "description": "Overrides the default IP address above. Leave empty to use the default."
+              "required": true,
+              "default": "Default RM",
+              "description": "Must match the Name of one of the RM devices configured above."
             },
             "powerOnCode": {
               "title": "Power On Signal",
@@ -283,9 +290,14 @@
   },
   "layout": [
     {
-      "type": "fieldset",
-      "title": "General",
-      "items": ["defaultIp", "showTemperatureHumidity", "temperatureSensorIp"]
+      "type": "array",
+      "key": "rmDevices",
+      "title": "Broadlink RM Devices",
+      "items": [
+        "rmDevices[].name",
+        "rmDevices[].ip",
+        "rmDevices[].enableTemperatureHumidity"
+      ]
     },
     {
       "type": "array",
@@ -293,7 +305,7 @@
       "title": "Accessories",
       "items": [
         "accessories[].name",
-        "accessories[].ip",
+        "accessories[].rmDevice",
         "accessories[].accessoryType",
         "accessories[].powerOnCode",
         "accessories[].powerOffCode"
@@ -305,7 +317,7 @@
       "title": "Dimmer Lights",
       "items": [
         "dimmers[].name",
-        "dimmers[].ip",
+        "dimmers[].rmDevice",
         "dimmers[].powerOnCode",
         "dimmers[].powerOffCode",
         "dimmers[].useLastKnownBrightness",
@@ -333,7 +345,7 @@
       "title": "TVs",
       "items": [
         "tvs[].name",
-        "tvs[].ip",
+        "tvs[].rmDevice",
         "tvs[].powerOnCode",
         "tvs[].powerOffCode",
         "tvs[].volumeUpCode",
