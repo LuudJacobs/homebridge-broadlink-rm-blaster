@@ -79,19 +79,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       });
     }
 
-    for (const tvConfig of config.tvs ?? []) {
-      const ip = tvConfig.ip ?? config.defaultIp;
-      if (!ip) {
-        this.log.warn(`Skipping TV "${tvConfig.name}": no IP address configured (set "ip" or "defaultIp")`);
-        continue;
-      }
-
-      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:tv:${tvConfig.name}`);
-      this.upsertAccessory(uuid, tvConfig.name, (accessory) => {
-        accessory.context.tvConfig = tvConfig;
-        new TvAccessory(this, accessory, tvConfig, ip);
-      });
-    }
+    this.publishTvAccessories(config);
 
     if (config.showTemperatureHumidity !== false) {
       const ip = config.temperatureSensorIp ?? config.defaultIp;
@@ -106,6 +94,45 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     }
 
     this.pruneStaleAccessories();
+  }
+
+  // TVs can't go through upsertAccessory's normal bridged path: HomeKit only
+  // renders a proper TV tile/remote for a Television service when it's
+  // published as its own external accessory (a bridged Television service
+  // shows up as a generic "unsupported device"). External accessories aren't
+  // cached/restored via configureAccessory() the way bridged ones are, so a
+  // fresh PlatformAccessory has to be built and republished on every
+  // didFinishLaunching - the stable UUID is what keeps the same HomeKit
+  // pairing across restarts, not any caching on our end. Each TV also needs
+  // to be added to the Home app separately, using the setup code Homebridge
+  // logs for it - it won't just appear alongside the bridged accessories.
+  private publishTvAccessories(config: BlasterPlatformConfig): void {
+    const externalAccessories: PlatformAccessory[] = [];
+
+    for (const tvConfig of config.tvs ?? []) {
+      const ip = tvConfig.ip ?? config.defaultIp;
+      if (!ip) {
+        this.log.warn(`Skipping TV "${tvConfig.name}": no IP address configured (set "ip" or "defaultIp")`);
+        continue;
+      }
+
+      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:tv:${tvConfig.name}`);
+      const accessory = new this.api.platformAccessory(tvConfig.name, uuid);
+      accessory.context.tvConfig = tvConfig;
+      // Fully configures every service/characteristic (including
+      // accessory.category) - must happen before publishing below, since
+      // HomeKit mishandles services added to an already-published accessory.
+      new TvAccessory(this, accessory, tvConfig, ip);
+      externalAccessories.push(accessory);
+    }
+
+    if (externalAccessories.length > 0) {
+      this.log.info(
+        `Publishing ${externalAccessories.length} TV(s) as external accessories - ` +
+        'add each one manually in the Home app using the setup code logged for it below.',
+      );
+      this.api.publishExternalAccessories(PLUGIN_NAME, externalAccessories);
+    }
   }
 
   private upsertAccessory(uuid: string, name: string, setup: (accessory: PlatformAccessory) => void): void {
