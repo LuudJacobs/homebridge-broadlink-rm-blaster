@@ -12,19 +12,14 @@ export function parseHexCode(hexCode: string): Buffer {
   return Buffer.from(hexCode.replace(/\s+/g, ''), 'hex');
 }
 
-// kiwicam-broadlinkjs-rm's own Broadlink.addDevice() keys its internal device
-// registry by MAC address, not by IP - passing the same placeholder MAC for
-// every device (as this used to) means the second addDevice() call for a
-// different IP hits the library's "already know this MAC, ignore" guard and
-// silently never creates a Device or authenticates, no matter how many RM
-// devices are configured. We don't have (and don't need) each device's real
-// MAC - the device itself doesn't validate it for this direct-by-IP
-// connection mode - so deriving a distinct placeholder per IP is enough to
-// give every configured device its own slot in the library's registry.
-export function placeholderMacForIp(ip: string): Buffer {
-  const octets = ip.split('.').map(Number);
-  return Buffer.from([0, 0, ...octets]);
-}
+// The manual/direct-by-IP placeholder MAC. Confirmed (via a real regression:
+// see the comment on broadlinkInstances below) that real Broadlink RM4 Pro
+// units silently refuse to authenticate at all if this is anything other
+// than all-zero - the actual device cares about this value even though it
+// doesn't need to match a real MAC. Never change this to anything else
+// without re-testing against real hardware directly (e.g. via the CLI, with
+// nothing else running) first.
+const PLACEHOLDER_MAC = Buffer.alloc(6, 0);
 
 export interface TemperatureHumidityReading {
   temperature: number;
@@ -32,10 +27,27 @@ export interface TemperatureHumidityReading {
 }
 
 export class BroadlinkClient {
-  private readonly broadlink = new Broadlink();
+  // kiwicam-broadlinkjs-rm's own Broadlink.addDevice() keys its internal
+  // device registry by MAC address, not by IP. Every device has to use the
+  // same PLACEHOLDER_MAC (see above - the device itself breaks on any other
+  // value), so a single shared Broadlink instance would let a second
+  // device's addDevice() collide with the first's registry entry and
+  // silently no-op, never authenticating. Giving each IP its own Broadlink
+  // instance means each has its own private registry, so the identical
+  // placeholder MAC never collides across devices.
+  private readonly broadlinkInstances = new Map<string, Broadlink>();
   private readonly devices = new Map<string, Promise<Device>>();
 
   constructor(private readonly log: Logger) {}
+
+  private getBroadlink(ip: string): Broadlink {
+    let instance = this.broadlinkInstances.get(ip);
+    if (!instance) {
+      instance = new Broadlink();
+      this.broadlinkInstances.set(ip, instance);
+    }
+    return instance;
+  }
 
   private getDevice(ip: string): Promise<Device> {
     let devicePromise = this.devices.get(ip);
@@ -43,9 +55,11 @@ export class BroadlinkClient {
       return devicePromise;
     }
 
+    const broadlink = this.getBroadlink(ip);
+
     devicePromise = new Promise<Device>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        this.broadlink.removeListener('deviceReady', onReady);
+        broadlink.removeListener('deviceReady', onReady);
         reject(new Error(`Timed out authenticating with Broadlink RM at ${ip}`));
       }, AUTH_TIMEOUT_MS);
 
@@ -54,13 +68,13 @@ export class BroadlinkClient {
           return;
         }
         clearTimeout(timeout);
-        this.broadlink.removeListener('deviceReady', onReady);
+        broadlink.removeListener('deviceReady', onReady);
         this.log.info(`Connected to Broadlink RM at ${ip}`);
         resolve(device);
       };
 
-      this.broadlink.on('deviceReady', onReady);
-      this.broadlink.addDevice({ address: ip, port: BROADLINK_PORT }, placeholderMacForIp(ip), MANUAL_RM_DEVICE_TYPE);
+      broadlink.on('deviceReady', onReady);
+      broadlink.addDevice({ address: ip, port: BROADLINK_PORT }, PLACEHOLDER_MAC, MANUAL_RM_DEVICE_TYPE);
     });
 
     devicePromise.catch(() => this.devices.delete(ip));
