@@ -12,6 +12,20 @@ export function parseHexCode(hexCode: string): Buffer {
   return Buffer.from(hexCode.replace(/\s+/g, ''), 'hex');
 }
 
+// kiwicam-broadlinkjs-rm's own Broadlink.addDevice() keys its internal device
+// registry by MAC address, not by IP - passing the same placeholder MAC for
+// every device (as this used to) means the second addDevice() call for a
+// different IP hits the library's "already know this MAC, ignore" guard and
+// silently never creates a Device or authenticates, no matter how many RM
+// devices are configured. We don't have (and don't need) each device's real
+// MAC - the device itself doesn't validate it for this direct-by-IP
+// connection mode - so deriving a distinct placeholder per IP is enough to
+// give every configured device its own slot in the library's registry.
+export function placeholderMacForIp(ip: string): Buffer {
+  const octets = ip.split('.').map(Number);
+  return Buffer.from([0, 0, ...octets]);
+}
+
 export interface TemperatureHumidityReading {
   temperature: number;
   humidity: number;
@@ -31,6 +45,7 @@ export class BroadlinkClient {
 
     devicePromise = new Promise<Device>((resolve, reject) => {
       const timeout = setTimeout(() => {
+        this.broadlink.removeListener('deviceReady', onReady);
         reject(new Error(`Timed out authenticating with Broadlink RM at ${ip}`));
       }, AUTH_TIMEOUT_MS);
 
@@ -45,7 +60,7 @@ export class BroadlinkClient {
       };
 
       this.broadlink.on('deviceReady', onReady);
-      this.broadlink.addDevice({ address: ip, port: BROADLINK_PORT }, Buffer.alloc(6, 0), MANUAL_RM_DEVICE_TYPE);
+      this.broadlink.addDevice({ address: ip, port: BROADLINK_PORT }, placeholderMacForIp(ip), MANUAL_RM_DEVICE_TYPE);
     });
 
     devicePromise.catch(() => this.devices.delete(ip));
