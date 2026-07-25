@@ -9,6 +9,7 @@ import type {
 } from 'homebridge';
 
 import { BroadlinkClient } from './broadlinkClient';
+import { NtfyNotifier } from './ntfyNotifier';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
@@ -32,7 +33,14 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
   ) {
     this.Service = this.api.hap.Service;
     this.Characteristic = this.api.hap.Characteristic;
-    this.broadlinkClient = new BroadlinkClient(this.log);
+
+    const blasterConfig = config as BlasterPlatformConfig;
+    const deviceNames = new Map<string, string>();
+    for (const rmDevice of blasterConfig.rmDevices ?? []) {
+      deviceNames.set(rmDevice.ip, rmDevice.name);
+    }
+    const notifier = new NtfyNotifier(this.log, blasterConfig.ntfyTopic, deviceNames);
+    this.broadlinkClient = new BroadlinkClient(this.log, notifier);
 
     this.api.on('didFinishLaunching', () => {
       this.discoverAccessories();

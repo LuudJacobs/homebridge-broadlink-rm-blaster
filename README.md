@@ -20,6 +20,8 @@ remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-bro
 - **TVs** power on/off plus a usable remote (arrows, select, back, exit, info,
   volume, mute) in the iOS Remote app
 - **Temperature/humidity sensor** polls the RM every 60 seconds, on by default.
+- **ntfy.sh notifications** optional push notification the first time an RM
+  device fails to connect.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
 ## Setup and Usage
@@ -58,6 +60,7 @@ If you'd rather edit the config file directly, here's an example
 ```json
 {
   "platform": "BroadlinkRMBlaster",
+  "ntfyTopic": "my-homebridge-alerts",
   "rmDevices": [
     {
       "name": "Default RM",
@@ -120,6 +123,11 @@ If you'd rather edit the config file directly, here's an example
 }
 ```
 
+- `ntfyTopic`: optional. If set, this plugin publishes a notification to
+  `https://ntfy.sh/<topic>` the first time a given RM device fails to
+  connect - subscribe to the same topic in the [ntfy](https://ntfy.sh) app to
+  receive it. Only fires once per outage; it resets once that device
+  connects successfully again.
 - `rmDevices`: at least one required. Each needs a unique `name` and `ip`;
   `enableTemperatureHumidity` (defaults to `true`) adds a temperature/humidity
   sensor accessory for that specific device.
