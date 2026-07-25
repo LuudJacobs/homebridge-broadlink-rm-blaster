@@ -1,5 +1,6 @@
 import Broadlink, { Device } from 'kiwicam-broadlinkjs-rm';
 import type { Logger } from 'homebridge';
+import type { NtfyNotifier } from './ntfyNotifier';
 
 // Device type code the library reserves for a manually added RM (RF capable),
 // used when connecting directly by IP instead of relying on UDP discovery.
@@ -38,7 +39,7 @@ export class BroadlinkClient {
   private readonly broadlinkInstances = new Map<string, Broadlink>();
   private readonly devices = new Map<string, Promise<Device>>();
 
-  constructor(private readonly log: Logger) {}
+  constructor(private readonly log: Logger, private readonly notifier?: NtfyNotifier) {}
 
   private getBroadlink(ip: string): Broadlink {
     let instance = this.broadlinkInstances.get(ip);
@@ -60,7 +61,9 @@ export class BroadlinkClient {
     devicePromise = new Promise<Device>((resolve, reject) => {
       const timeout = setTimeout(() => {
         broadlink.removeListener('deviceReady', onReady);
-        reject(new Error(`Timed out authenticating with Broadlink RM at ${ip}`));
+        const error = new Error(`Timed out authenticating with Broadlink RM at ${ip}`);
+        this.notifier?.notifyConnectionFailure(ip, error);
+        reject(error);
       }, AUTH_TIMEOUT_MS);
 
       const onReady = (device: Device) => {
@@ -70,6 +73,7 @@ export class BroadlinkClient {
         clearTimeout(timeout);
         broadlink.removeListener('deviceReady', onReady);
         this.log.info(`Connected to Broadlink RM at ${ip}`);
+        this.notifier?.notifyConnectionRecovered(ip);
         resolve(device);
       };
 

@@ -60,4 +60,5 @@ export interface BlasterPlatformConfig extends PlatformConfig {
   accessories?: BasicAccessoryConfig[];
   dimmers?: DimmerAccessoryConfig[];
   tvs?: TvAccessoryConfig[];
+  ntfyTopic?: string;
 }
