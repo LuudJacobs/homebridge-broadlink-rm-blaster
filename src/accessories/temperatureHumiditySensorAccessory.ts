@@ -4,7 +4,14 @@ import type { BroadlinkRMBlasterPlatform } from '../platform';
 
 const POLL_INTERVAL_MS = 60_000;
 
+// A single poll failure is normal RF/network noise. Only treat the sensor as
+// actually unreachable (clear the cached reading, notify) after this many in
+// a row - avoids flapping to "No Response" and a notification on one blip.
+const MAX_CONSECUTIVE_FAILURES = 5;
+
 export class TemperatureHumiditySensorAccessory {
+  private consecutiveFailures = 0;
+
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
@@ -56,6 +63,9 @@ export class TemperatureHumiditySensorAccessory {
     try {
       const { temperature, humidity } = await this.platform.broadlinkClient.readTemperatureHumidity(this.ip);
 
+      this.consecutiveFailures = 0;
+      this.platform.notifier.notifyConnectionRecovered(this.ip);
+
       this.accessory.context.temperature = temperature;
       this.accessory.context.humidity = humidity;
 
@@ -65,6 +75,13 @@ export class TemperatureHumiditySensorAccessory {
         ?.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, humidity);
     } catch (error) {
       this.platform.log.warn(`Failed to read temperature/humidity from ${this.ip}: ${(error as Error).message}`);
+
+      this.consecutiveFailures++;
+      if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        this.accessory.context.temperature = undefined;
+        this.accessory.context.humidity = undefined;
+        this.platform.notifier.notifyConnectionFailure(this.ip, error as Error);
+      }
     }
   }
 }

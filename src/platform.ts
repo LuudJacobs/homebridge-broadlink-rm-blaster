@@ -23,6 +23,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
 
   public readonly accessories: PlatformAccessory[] = [];
   public readonly broadlinkClient: BroadlinkClient;
+  public readonly notifier: NtfyNotifier;
 
   private readonly activeUuids = new Set<string>();
 
@@ -39,8 +40,8 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     for (const rmDevice of blasterConfig.rmDevices ?? []) {
       deviceNames.set(rmDevice.ip, rmDevice.name);
     }
-    const notifier = new NtfyNotifier(this.log, blasterConfig.ntfyTopic, deviceNames);
-    this.broadlinkClient = new BroadlinkClient(this.log, notifier);
+    this.notifier = new NtfyNotifier(this.log, blasterConfig.ntfyTopic, deviceNames);
+    this.broadlinkClient = new BroadlinkClient(this.log, this.notifier);
 
     this.api.on('didFinishLaunching', () => {
       this.discoverAccessories();
