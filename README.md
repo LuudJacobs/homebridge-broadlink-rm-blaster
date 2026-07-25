@@ -127,10 +127,14 @@ If you'd rather edit the config file directly, here's an example
   `https://ntfy.sh/<topic>` the first time a given RM device fails to
   connect - subscribe to the same topic in the [ntfy](https://ntfy.sh) app to
   receive it. Only fires once per outage; it resets once that device
-  connects successfully again.
+  connects successfully again. The temperature/humidity sensor also triggers
+  this after 5 consecutive failed readings (see below), reusing the same
+  once-per-outage behavior.
 - `rmDevices`: at least one required. Each needs a unique `name` and `ip`;
   `enableTemperatureHumidity` (defaults to `true`) adds a temperature/humidity
-  sensor accessory for that specific device.
+  sensor accessory for that specific device. If a reading fails 5 times in a
+  row, the sensor shows "No Response" in Home (rather than a frozen stale
+  value) and, if `ntfyTopic` is set, sends a notification.
 - `rmDevice` on every accessory/dimmer/TV below is a plain text field that
   must exactly match the `name` of one of the devices above. There's no
   live dropdown, since Homebridge's config UI can't populate one from
