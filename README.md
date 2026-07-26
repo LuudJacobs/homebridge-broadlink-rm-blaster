@@ -1,17 +1,41 @@
-# homebridge-broadlink-rm-blaster
+# Homebridge Broadlink RM Blaster Plugin 1.2.0
 
-Blast RF and IR signals from Broadlink RM devices using Homebridge. Inspired by
-[homebridge-broadlink-rm](https://github.com/kiwi-cam/homebridge-broadlink-rm#readme),
-built on [kiwicam-broadlinkjs-rm](https://www.npmjs.com/package/kiwicam-broadlinkjs-rm)
-for the underlying device communication.
+**This Homebridge plugin has been 100% vibe coded with Claude.**
 
-This plugin sends pre-recorded hex signals to a known device IP. **It does not learn
-signals or autodiscover the Broadlink devices.** To capture hex codes from your own
-remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
+Blast RF and IR signals from Broadlink RM devices using Homebridge. Sends
+pre-recorded hex codes to a known device IP; does not learn signals or
+autodiscover devices. To capture hex codes from your own remotes, see
+[learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
 
-> This project was vibe coded using Claude
+## Requirements
 
-## Features
+- A Broadlink RM device, unlocked using the official Broadlink app (new
+  devices ship locked, which blocks local API access).
+- Node.js `^18.15.0 || ^20.7.0 || ^22 || ^24`
+- Homebridge `^1.8.0 || ^2.0.0`
+
+## Installation
+
+```bash
+npm install -g homebridge-broadlink-rm-blaster
+```
+
+## Usage
+
+This plugin can be fully configured from the Homebridge Config UI X plugin
+settings form. See [Configuration](#configuration) below for the full field
+reference and an example `config.json`.
+
+**TVs don't appear automatically alongside your other accessories.** HomeKit
+only shows a proper TV tile/remote when it's added as its own accessory, so
+each one needs to be paired separately: after restarting Homebridge, check
+its log for a line like `Please add [name] manually in Home app. Setup
+Code: ...` for each configured TV, then add it in the Home app using that
+code, the same way you'd add any other HomeKit accessory. If you remove a
+TV from your config later, it has to be removed from the Home app manually
+too since Homebridge can't unpair it for you.
+
+### Features
 
 - **Multiple RM devices** configure several Broadlink RMs and assign each
   accessory to whichever one it's actually near.
@@ -24,35 +48,12 @@ remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-bro
   device fails to connect.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
-## Setup and Usage
-
-```bash
-npm install -g homebridge-broadlink-rm-blaster
-```
-
-### Unlock device
-
-Your Broadlink RM must be unlocked using the official Broadlink app before this
-plugin (or any third-party integration) can control it: new devices ship locked,
-which blocks local API access.
-
-### TVs
-
-**TVs don't appear automatically alongside your other accessories.** HomeKit
-only shows a proper TV tile/remote when it's added as its own accessory, so
-each one needs to be paired separately: after restarting Homebridge, check
-its log for a line like `Please add [name] manually in Home app. Setup
-Code: ...` for each configured TV, then add it in the Home app using that
-code, the same way you'd add any other HomeKit accessory. If you remove a
-TV from your config later, it has to be removed from the Home app manually
-too since Homebridge can't unpair it for you.
-
-## Configuration
+### Configuration
 
 This plugin can be fully configured from the Homebridge Config UI X plugin
 settings form.
 
-### config.json
+#### config.json
 
 If you'd rather edit the config file directly, here's an example
 `config.json` platform block:
@@ -162,7 +163,7 @@ If you'd rather edit the config file directly, here's an example
   `muteCode` is sent as-is for both muting and unmuting, since most remotes
   use a single toggle button rather than distinct on/off signals.
 
-## Debugging
+### Debugging
 
 To send a single hex code straight to your RM, bypassing Homebridge/HomeKit
 entirely (useful for isolating whether a signal behaves oddly on the device
@@ -174,3 +175,11 @@ broadlink-rm-blaster <ip> <hexCode>
 ```
 
 Run `broadlink-rm-blaster --help` for usage details.
+
+## Credits
+
+Inspired by [homebridge-broadlink-rm](https://github.com/kiwi-cam/homebridge-broadlink-rm#readme),
+built on [kiwicam-broadlinkjs-rm](https://www.npmjs.com/package/kiwicam-broadlinkjs-rm)
+for the underlying device communication.
+
+[LICENSE](https://github.com/LuudJacobs/homebridge-broadlink-rm-blaster/blob/main/LICENSE) · [CHANGELOG](https://github.com/LuudJacobs/homebridge-broadlink-rm-blaster/blob/main/CHANGELOG.md)
