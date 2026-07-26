@@ -6,10 +6,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.2.0] - 2026-07-26
+
+### Changed
 - `package.json`'s `files` list now explicitly includes README, LICENSE and
   CHANGELOG alongside the published `dist` output.
-- README restructured to Requirements/Installation/Usage, with a version
-  number in the title and license/changelog links at the bottom.
+- README restructured: Requirements/Installation/Usage sections, version
+  number in the title, Features/Configuration/Debugging nested under Usage,
+  license/changelog links at the bottom.
 
 ## [1.1.1] - 2026-07-26
 
