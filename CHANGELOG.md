@@ -1,0 +1,62 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## Unreleased
+
+- `package.json`'s `files` list now explicitly includes README, LICENSE and
+  CHANGELOG alongside the published `dist` output.
+- README restructured to Requirements/Installation/Usage, with a version
+  number in the title and license/changelog links at the bottom.
+
+## [1.1.1] - 2026-07-26
+
+### Added
+- Temperature/humidity sensor now shows "No Response" in Home and sends an
+  ntfy notification after 5 consecutive failed readings, instead of silently
+  keeping the last known value forever.
+
+## [1.1.0] - 2026-07-25
+
+### Added
+- Optional `ntfyTopic` config field: sends a push notification via ntfy.sh
+  the first time an RM device fails to connect.
+
+## [1.0.4] - 2026-07-23
+
+### Changed
+- Reverted the `.npmignore` added in 1.0.3 (inert; `package.json`'s `files`
+  field already controls what's published).
+
+## [1.0.3] - 2026-07-23
+
+### Added
+- `.npmignore`.
+
+## [1.0.2] - 2026-07-22
+
+### Fixed
+- Reverted 1.0.1's per-IP placeholder MAC (broke authentication with real
+  Broadlink hardware); fixed the underlying multi-device registry collision
+  with a private `Broadlink` instance per configured RM device instead.
+
+## [1.0.1] - 2026-07-22
+
+### Fixed
+- Second configured RM device permanently failing to authenticate, and a
+  `MaxListenersExceededWarning` on repeated connection retries.
+
+## [1.0.0] - 2026-07-20
+
+### Added
+- First public release: basic accessories (light/switch/outlet/fan), dimmer
+  lights with brightness levels, TV remote accessory, temperature/humidity
+  sensor, multi-RM-device support, CLI diagnostic tool.
+
+## [0.9.1] - 2026-07-20
+
+### Changed
+- README restructured: configuration section now leads with Homebridge
+  Config UI X support, `config.json` example moved to its own subsection.
