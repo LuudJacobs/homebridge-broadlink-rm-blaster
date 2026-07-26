@@ -1,8 +1,11 @@
-# homebridge-broadlink-rm-blaster 1.2.0
+# Homebridge Broadlink RM Blaster Plugin 1.2.0
+
+**This Homebridge plugin has been 100% vibe coded with Claude.**
 
 Blast RF and IR signals from Broadlink RM devices using Homebridge. Sends
 pre-recorded hex codes to a known device IP; does not learn signals or
-autodiscover devices.
+autodiscover devices. To capture hex codes from your own remotes, see
+[learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
 
 ## Requirements
 
@@ -32,7 +35,7 @@ code, the same way you'd add any other HomeKit accessory. If you remove a
 TV from your config later, it has to be removed from the Home app manually
 too since Homebridge can't unpair it for you.
 
-## Features
+### Features
 
 - **Multiple RM devices** configure several Broadlink RMs and assign each
   accessory to whichever one it's actually near.
@@ -45,12 +48,12 @@ too since Homebridge can't unpair it for you.
   device fails to connect.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
-## Configuration
+### Configuration
 
 This plugin can be fully configured from the Homebridge Config UI X plugin
 settings form.
 
-### config.json
+#### config.json
 
 If you'd rather edit the config file directly, here's an example
 `config.json` platform block:
@@ -160,7 +163,7 @@ If you'd rather edit the config file directly, here's an example
   `muteCode` is sent as-is for both muting and unmuting, since most remotes
   use a single toggle button rather than distinct on/off signals.
 
-## Debugging
+### Debugging
 
 To send a single hex code straight to your RM, bypassing Homebridge/HomeKit
 entirely (useful for isolating whether a signal behaves oddly on the device
@@ -177,9 +180,6 @@ Run `broadlink-rm-blaster --help` for usage details.
 
 Inspired by [homebridge-broadlink-rm](https://github.com/kiwi-cam/homebridge-broadlink-rm#readme),
 built on [kiwicam-broadlinkjs-rm](https://www.npmjs.com/package/kiwicam-broadlinkjs-rm)
-for the underlying device communication. To capture hex codes from your own
-remotes, see [learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
-
-> This project was vibe coded using Claude
+for the underlying device communication.
 
 [LICENSE](https://github.com/LuudJacobs/homebridge-broadlink-rm-blaster/blob/main/LICENSE) · [CHANGELOG](https://github.com/LuudJacobs/homebridge-broadlink-rm-blaster/blob/main/CHANGELOG.md)
