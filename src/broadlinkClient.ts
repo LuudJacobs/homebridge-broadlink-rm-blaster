@@ -62,7 +62,10 @@ export class BroadlinkClient {
       const timeout = setTimeout(() => {
         broadlink.removeListener('deviceReady', onReady);
         const error = new Error(`Timed out authenticating with Broadlink RM at ${ip}`);
-        this.notifier?.notifyConnectionFailure(ip, error);
+        this.notifier?.notifyConnectionFailure(
+          ip,
+          'Timed out authenticating with Broadlink RM. Check Homebridge logs for more details.',
+        );
         reject(error);
       }, AUTH_TIMEOUT_MS);
 

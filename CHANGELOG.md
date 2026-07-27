@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed the `ntfyTopic` config field's description, which only mentioned the
   RM-connection-failure trigger and not the temperature/humidity sensor's
   5-consecutive-failed-readings trigger.
+- ntfy notification bodies now use a short, fixed message pointing at the
+  Homebridge logs, instead of the raw error text (which included the RM's
+  IP address).
 
 ## [1.2.0] - 2026-07-26
 
