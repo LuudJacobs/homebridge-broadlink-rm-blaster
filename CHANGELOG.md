@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Fixed the `ntfyTopic` config field's description, which only mentioned the
+  RM-connection-failure trigger and not the temperature/humidity sensor's
+  5-consecutive-failed-readings trigger.
+
 ## [1.2.0] - 2026-07-26
 
 ### Changed
