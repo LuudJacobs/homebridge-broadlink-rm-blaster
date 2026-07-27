@@ -80,7 +80,10 @@ export class TemperatureHumiditySensorAccessory {
       if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
         this.accessory.context.temperature = undefined;
         this.accessory.context.humidity = undefined;
-        this.platform.notifier.notifyConnectionFailure(this.ip, error as Error);
+        this.platform.notifier.notifyConnectionFailure(
+          this.ip,
+          'Timed out reading temperature and humidity. Check Homebridge logs for more details.',
+        );
       }
     }
   }
