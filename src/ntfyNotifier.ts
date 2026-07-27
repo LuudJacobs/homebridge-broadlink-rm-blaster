@@ -15,7 +15,7 @@ export class NtfyNotifier {
     private readonly deviceNames: Map<string, string>,
   ) {}
 
-  notifyConnectionFailure(ip: string, error: Error): void {
+  notifyConnectionFailure(ip: string, message: string): void {
     if (!this.topic || this.notifiedIps.has(ip)) {
       return;
     }
@@ -25,7 +25,7 @@ export class NtfyNotifier {
     fetch(`${NTFY_BASE_URL}/${this.topic}`, {
       method: 'POST',
       headers: { Title: `Homebridge: Connection to Broadlink ${deviceName} Failed!` },
-      body: error.message,
+      body: message,
     }).catch((notifyError: unknown) => {
       const message = notifyError instanceof Error ? notifyError.message : String(notifyError);
       this.log.warn(`Failed to send ntfy notification: ${message}`);
