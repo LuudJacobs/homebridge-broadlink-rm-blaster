@@ -10,7 +10,7 @@
         "title": "ntfy.sh Notification Topic",
         "type": "string",
         "required": false,
-        "description": "Optional. If set, sends a push notification via ntfy.sh the first time an RM device fails to connect, so a dead/unreachable device doesn't fail silently. Subscribe to this topic in the ntfy app to receive it."
+        "description": "Optional. If set, sends a push notification via ntfy.sh the first time an RM device fails to connect, or after 5 consecutive failed temperature/humidity readings, so a dead/unreachable device doesn't fail silently. Subscribe to this topic in the ntfy app to receive it."
       },
       "rmDevices": {
         "title": "Broadlink RM Devices",
