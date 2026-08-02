@@ -6,17 +6,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-- Added optional MQTT publishing of temperature/humidity readings, so other
+## [1.3.0] - 2026-08-02
+
+### Added
+- Optional MQTT publishing of temperature/humidity readings, so other
   plugins (e.g. `homebridge-mqttthing`) can subscribe to them. Controlled by
   an `enableMqtt` checkbox plus `mqttHost`/`mqttPort` (and optional
   `mqttUsername`/`mqttPassword`/`mqttBaseTopic`), and a separate
   `enableMqttPublish` checkbox per RM device, independent of the existing
   `enableTemperatureHumidity` HomeKit sensor checkbox - either, both, or
   neither can be enabled.
+
+### Changed
 - Reorganized the Config UI X settings form: Accessories, Dimmer Lights, TVs
-  (and Dimmer Lights' Brightness Levels), and the new Notifications/MQTT
-  fields are now collapsed fieldsets, so the form isn't a huge wall of fields
-  by default.
+  (and Dimmer Lights' Brightness Levels), and new Notifications/MQTT fields
+  are now collapsed fieldsets, so the form isn't a huge wall of fields by
+  default.
+- Trimmed redundant field descriptions and tightened several labels across
+  the config form.
 
 ## [1.2.1] - 2026-07-27
 
