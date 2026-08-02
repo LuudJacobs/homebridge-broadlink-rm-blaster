@@ -1,6 +1,6 @@
 {
   "name": "homebridge-broadlink-rm-blaster",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Blast RF and IR signals from Broadlink RM devices using Homebridge",
   "author": "Luud Jacobs",
   "license": "MIT",
@@ -43,7 +43,8 @@
     "prepublishOnly": "npm run lint && npm run build"
   },
   "dependencies": {
-    "kiwicam-broadlinkjs-rm": "^0.9.22"
+    "kiwicam-broadlinkjs-rm": "^0.9.22",
+    "mqtt": "^5.15.2"
   },
   "devDependencies": {
     "@types/node": "^22.10.5",

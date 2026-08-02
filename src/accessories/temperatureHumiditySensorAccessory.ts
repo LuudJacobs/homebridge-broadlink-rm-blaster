@@ -17,6 +17,7 @@ export class TemperatureHumiditySensorAccessory {
     private readonly accessory: PlatformAccessory,
     private readonly ip: string,
     private readonly name: string,
+    private readonly deviceName: string,
   ) {
     const temperatureService = this.accessory.getService(this.platform.Service.TemperatureSensor)
       ?? this.accessory.addService(this.platform.Service.TemperatureSensor);
@@ -73,6 +74,8 @@ export class TemperatureHumiditySensorAccessory {
         ?.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, temperature);
       this.accessory.getService(this.platform.Service.HumiditySensor)
         ?.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, humidity);
+
+      this.platform.mqttPublisher.publishReading(this.deviceName, temperature, humidity);
     } catch (error) {
       this.platform.log.warn(`Failed to read temperature/humidity from ${this.ip}: ${(error as Error).message}`);
 

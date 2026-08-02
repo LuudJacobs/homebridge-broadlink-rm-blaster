@@ -1,4 +1,4 @@
-# Homebridge Broadlink RM Blaster Plugin 1.2.1
+# Homebridge Broadlink RM Blaster Plugin 1.3.0
 
 **This Homebridge plugin has been 100% vibe coded with Claude.**
 
@@ -46,6 +46,8 @@ too since Homebridge can't unpair it for you.
 - **Temperature/humidity sensor** polls the RM every 60 seconds, on by default.
 - **ntfy.sh notifications** optional push notification the first time an RM
   device fails to connect.
+- **MQTT publishing** optionally publish temperature/humidity readings to an
+  MQTT broker for other plugins (e.g. `homebridge-mqttthing`) to subscribe to.
 - Fully configurable via the Homebridge Config UI X plugin settings form.
 
 ### Configuration
@@ -62,6 +64,10 @@ If you'd rather edit the config file directly, here's an example
 {
   "platform": "BroadlinkRMBlaster",
   "ntfyTopic": "my-homebridge-alerts",
+  "mqttBrokerUrl": "mqtt://192.168.1.10:1883",
+  "mqttTopic": "homebridge-broadlink-rm-blaster",
+  "mqttUsername": "homebridge",
+  "mqttPassword": "secret",
   "rmDevices": [
     {
       "name": "Default RM",
@@ -131,6 +137,14 @@ If you'd rather edit the config file directly, here's an example
   connects successfully again. The temperature/humidity sensor also triggers
   this after 5 consecutive failed readings (see below), reusing the same
   once-per-outage behavior.
+- `mqttBrokerUrl`: optional. If set, publishes each temperature/humidity
+  reading as a retained JSON message (`{"temperature": 21.5, "humidity": 48}`)
+  to `<mqttTopic>/<device-name>` on this broker, e.g.
+  `homebridge-broadlink-rm-blaster/bedroom-rm`, one sub-topic per RM device
+  with sensing enabled - so another plugin (e.g. `homebridge-mqttthing`) can
+  subscribe to it. `mqttTopic` defaults to `homebridge-broadlink-rm-blaster`
+  if left empty. `mqttUsername`/`mqttPassword` are optional broker
+  credentials.
 - `rmDevices`: at least one required. Each needs a unique `name` and `ip`;
   `enableTemperatureHumidity` (defaults to `true`) adds a temperature/humidity
   sensor accessory for that specific device. If a reading fails 5 times in a
