@@ -4,6 +4,7 @@ export interface RmDeviceConfig {
   name: string;
   ip: string;
   enableTemperatureHumidity?: boolean;
+  enableMqttPublish?: boolean;
 }
 
 export type BasicAccessoryType = 'light' | 'switch' | 'outlet' | 'fan';

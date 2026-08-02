@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 - Added optional MQTT publishing of temperature/humidity readings, so other
-  plugins (e.g. `homebridge-mqttthing`) can subscribe to them.
+  plugins (e.g. `homebridge-mqttthing`) can subscribe to them. Controlled by
+  a separate `enableMqttPublish` checkbox per RM device, independent of the
+  existing `enableTemperatureHumidity` HomeKit sensor checkbox - either, both,
+  or neither can be enabled.
 
 ## [1.2.1] - 2026-07-27
 
