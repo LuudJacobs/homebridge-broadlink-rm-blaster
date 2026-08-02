@@ -72,11 +72,14 @@ If you'd rather edit the config file directly, here's an example
     {
       "name": "Default RM",
       "ip": "192.168.1.50",
-      "enableTemperatureHumidity": true
+      "enableTemperatureHumidity": true,
+      "enableMqttPublish": true
     },
     {
       "name": "Bedroom RM",
-      "ip": "192.168.1.60"
+      "ip": "192.168.1.60",
+      "enableTemperatureHumidity": false,
+      "enableMqttPublish": true
     }
   ],
   "accessories": [
@@ -141,15 +144,20 @@ If you'd rather edit the config file directly, here's an example
   reading as a retained JSON message (`{"temperature": 21.5, "humidity": 48}`)
   to `<mqttTopic>/<device-name>` on this broker, e.g.
   `homebridge-broadlink-rm-blaster/bedroom-rm`, one sub-topic per RM device
-  with sensing enabled - so another plugin (e.g. `homebridge-mqttthing`) can
-  subscribe to it. `mqttTopic` defaults to `homebridge-broadlink-rm-blaster`
-  if left empty. `mqttUsername`/`mqttPassword` are optional broker
-  credentials.
-- `rmDevices`: at least one required. Each needs a unique `name` and `ip`;
-  `enableTemperatureHumidity` (defaults to `true`) adds a temperature/humidity
-  sensor accessory for that specific device. If a reading fails 5 times in a
-  row, the sensor shows "No Response" in Home (rather than a frozen stale
-  value) and, if `ntfyTopic` is set, sends a notification.
+  with `enableMqttPublish` enabled - so another plugin (e.g.
+  `homebridge-mqttthing`) can subscribe to it. `mqttTopic` defaults to
+  `homebridge-broadlink-rm-blaster` if left empty. `mqttUsername`/
+  `mqttPassword` are optional broker credentials.
+- `rmDevices`: at least one required. Each needs a unique `name` and `ip`.
+  Two independent checkboxes control what happens with that device's
+  temperature/humidity reading, and either, both, or neither can be enabled:
+  `enableTemperatureHumidity` (defaults to `true`) adds a HomeKit
+  temperature/humidity sensor accessory for that device;
+  `enableMqttPublish` (defaults to `true`, only shown once `mqttBrokerUrl` is
+  set) publishes its readings to MQTT. If a reading fails 5 times in a row,
+  the HomeKit sensor (if enabled) shows "No Response" (rather than a frozen
+  stale value) and, if `ntfyTopic` is set, sends a notification - regardless
+  of which of the two checkboxes are on.
 - `rmDevice` on every accessory/dimmer/TV below is a plain text field that
   must exactly match the `name` of one of the devices above. There's no
   live dropdown, since Homebridge's config UI can't populate one from

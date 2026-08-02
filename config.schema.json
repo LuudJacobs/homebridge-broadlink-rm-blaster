@@ -70,7 +70,17 @@
               "type": "boolean",
               "default": true,
               "required": false,
-              "description": "Not all RM units report real sensor data. If yours doesn't, this sensor will just show \"No Response\" in Home."
+              "description": "Exposes this device's temperature/humidity as a HomeKit thermometer accessory. Not all RM units report real sensor data - if yours doesn't, this sensor will just show \"No Response\" in Home. Independent of MQTT publishing below - enable one, both, or neither."
+            },
+            "enableMqttPublish": {
+              "title": "Publish to MQTT",
+              "type": "boolean",
+              "default": true,
+              "required": false,
+              "description": "Publishes this device's temperature/humidity readings to MQTT. Requires an MQTT Broker URL to be configured above. Independent of the HomeKit thermometer above.",
+              "condition": {
+                "functionBody": "return !!model.mqttBrokerUrl;"
+              }
             }
           }
         }
@@ -342,7 +352,8 @@
       "items": [
         "rmDevices[].name",
         "rmDevices[].ip",
-        "rmDevices[].enableTemperatureHumidity"
+        "rmDevices[].enableTemperatureHumidity",
+        "rmDevices[].enableMqttPublish"
       ]
     },
     {
