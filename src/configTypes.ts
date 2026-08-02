@@ -4,6 +4,7 @@ export interface RmDeviceConfig {
   name: string;
   ip: string;
   enableTemperatureHumidity?: boolean;
+  enableMqttPublish?: boolean;
 }
 
 export type BasicAccessoryType = 'light' | 'switch' | 'outlet' | 'fan';
@@ -61,4 +62,10 @@ export interface BlasterPlatformConfig extends PlatformConfig {
   dimmers?: DimmerAccessoryConfig[];
   tvs?: TvAccessoryConfig[];
   ntfyTopic?: string;
+  enableMqtt?: boolean;
+  mqttHost?: string;
+  mqttPort?: number;
+  mqttUsername?: string;
+  mqttPassword?: string;
+  mqttBaseTopic?: string;
 }

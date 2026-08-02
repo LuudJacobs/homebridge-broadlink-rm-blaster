@@ -14,21 +14,25 @@ export class TemperatureHumiditySensorAccessory {
 
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
-    private readonly accessory: PlatformAccessory,
+    private readonly accessory: PlatformAccessory | undefined,
     private readonly ip: string,
     private readonly name: string,
+    private readonly deviceName: string,
+    private readonly publishToMqtt: boolean,
   ) {
-    const temperatureService = this.accessory.getService(this.platform.Service.TemperatureSensor)
-      ?? this.accessory.addService(this.platform.Service.TemperatureSensor);
-    temperatureService.setCharacteristic(this.platform.Characteristic.Name, this.name);
-    temperatureService.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
-      .onGet(() => this.getTemperature());
+    if (this.accessory) {
+      const temperatureService = this.accessory.getService(this.platform.Service.TemperatureSensor)
+        ?? this.accessory.addService(this.platform.Service.TemperatureSensor);
+      temperatureService.setCharacteristic(this.platform.Characteristic.Name, this.name);
+      temperatureService.getCharacteristic(this.platform.Characteristic.CurrentTemperature)
+        .onGet(() => this.getTemperature());
 
-    const humidityService = this.accessory.getService(this.platform.Service.HumiditySensor)
-      ?? this.accessory.addService(this.platform.Service.HumiditySensor);
-    humidityService.setCharacteristic(this.platform.Characteristic.Name, this.name);
-    humidityService.getCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity)
-      .onGet(() => this.getHumidity());
+      const humidityService = this.accessory.getService(this.platform.Service.HumiditySensor)
+        ?? this.accessory.addService(this.platform.Service.HumiditySensor);
+      humidityService.setCharacteristic(this.platform.Characteristic.Name, this.name);
+      humidityService.getCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity)
+        .onGet(() => this.getHumidity());
+    }
 
     // Not all RM units actually report real sensor data ("if available" in
     // the todo) - an immediate poll plus a recurring one lets a supported unit
@@ -39,7 +43,7 @@ export class TemperatureHumiditySensorAccessory {
   }
 
   private getTemperature(): CharacteristicValue {
-    const temperature = this.accessory.context.temperature;
+    const temperature = this.accessory?.context.temperature;
     if (temperature === undefined) {
       this.throwNoResponse();
     }
@@ -47,7 +51,7 @@ export class TemperatureHumiditySensorAccessory {
   }
 
   private getHumidity(): CharacteristicValue {
-    const humidity = this.accessory.context.humidity;
+    const humidity = this.accessory?.context.humidity;
     if (humidity === undefined) {
       this.throwNoResponse();
     }
@@ -66,20 +70,28 @@ export class TemperatureHumiditySensorAccessory {
       this.consecutiveFailures = 0;
       this.platform.notifier.notifyConnectionRecovered(this.ip);
 
-      this.accessory.context.temperature = temperature;
-      this.accessory.context.humidity = humidity;
+      if (this.accessory) {
+        this.accessory.context.temperature = temperature;
+        this.accessory.context.humidity = humidity;
 
-      this.accessory.getService(this.platform.Service.TemperatureSensor)
-        ?.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, temperature);
-      this.accessory.getService(this.platform.Service.HumiditySensor)
-        ?.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, humidity);
+        this.accessory.getService(this.platform.Service.TemperatureSensor)
+          ?.updateCharacteristic(this.platform.Characteristic.CurrentTemperature, temperature);
+        this.accessory.getService(this.platform.Service.HumiditySensor)
+          ?.updateCharacteristic(this.platform.Characteristic.CurrentRelativeHumidity, humidity);
+      }
+
+      if (this.publishToMqtt) {
+        this.platform.mqttPublisher.publishReading(this.deviceName, temperature, humidity);
+      }
     } catch (error) {
       this.platform.log.warn(`Failed to read temperature/humidity from ${this.ip}: ${(error as Error).message}`);
 
       this.consecutiveFailures++;
       if (this.consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
-        this.accessory.context.temperature = undefined;
-        this.accessory.context.humidity = undefined;
+        if (this.accessory) {
+          this.accessory.context.temperature = undefined;
+          this.accessory.context.humidity = undefined;
+        }
         this.platform.notifier.notifyConnectionFailure(
           this.ip,
           'Timed out reading temperature and humidity. Check Homebridge logs for more details.',

@@ -2,7 +2,7 @@
   "pluginAlias": "BroadlinkRMBlaster",
   "pluginType": "platform",
   "singular": true,
-  "headerDisplay": "Blasts pre-recorded IR/RF hex signals via a Broadlink RM. Signals must be captured elsewhere (this plugin does not learn or discover devices).",
+  "headerDisplay": "Blasts pre-recorded IR/RF hex signals via a Broadlink RM.",
   "schema": {
     "type": "object",
     "properties": {
@@ -10,7 +10,60 @@
         "title": "ntfy.sh Notification Topic",
         "type": "string",
         "required": false,
-        "description": "Optional. If set, sends a push notification via ntfy.sh the first time an RM device fails to connect, or after 5 consecutive failed temperature/humidity readings, so a dead/unreachable device doesn't fail silently. Subscribe to this topic in the ntfy app to receive it."
+        "description": "If set, sends a push notification via ntfy.sh the first time an RM device fails to connect, or after 5 consecutive failed temperature/humidity readings."
+      },
+      "enableMqtt": {
+        "title": "Enable MQTT",
+        "type": "boolean",
+        "default": false,
+        "required": false,
+        "description": "Publish temperature/humidity readings from RM devices to an MQTT broker."
+      },
+      "mqttHost": {
+        "title": "Host",
+        "type": "string",
+        "default": "localhost",
+        "required": false,
+        "description": "Broker hostname or IP address.",
+        "condition": {
+          "functionBody": "return model.enableMqtt === true;"
+        }
+      },
+      "mqttPort": {
+        "title": "Port",
+        "type": "integer",
+        "default": 1883,
+        "required": false,
+        "condition": {
+          "functionBody": "return model.enableMqtt === true;"
+        }
+      },
+      "mqttUsername": {
+        "title": "Username",
+        "type": "string",
+        "required": false,
+        "condition": {
+          "functionBody": "return model.enableMqtt === true;"
+        }
+      },
+      "mqttPassword": {
+        "title": "Password",
+        "type": "string",
+        "required": false,
+        "condition": {
+          "functionBody": "return model.enableMqtt === true;"
+        }
+      },
+      "mqttBaseTopic": {
+        "title": "Base Topic",
+        "type": "string",
+        "default": "broadlinkrm",
+        "placeholder": "broadlinkrm",
+        "required": false,
+        "description": "Readings are published to <base topic>/<device name>. For example, with the default base topic, a device named \"Blaster\" publishes to \"broadlinkrm/blaster\".",
+        "condition": {
+          "functionBody": "return model.enableMqtt === true;"
+        }
       },
       "rmDevices": {
         "title": "Broadlink RM Devices",
@@ -24,7 +77,6 @@
               "title": "Name",
               "type": "string",
               "required": true,
-              "default": "Default RM",
               "description": "Referenced by name from each accessory below - must be unique."
             },
             "ip": {
@@ -34,17 +86,24 @@
               "required": true
             },
             "enableTemperatureHumidity": {
-              "title": "Show temperature and humidity if available",
+              "title": "HomeKit thermometer accessory",
               "type": "boolean",
-              "default": true,
+              "default": false,
               "required": false,
-              "description": "Not all RM units report real sensor data. If yours doesn't, this sensor will just show \"No Response\" in Home."
+              "description": "Exposes this device's temperature/humidity as a HomeKit thermometer accessory."
+            },
+            "enableMqttPublish": {
+              "title": "Publish temperature and humidity to MQTT",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Requires MQTT to be enabled and configured below"
             }
           }
         }
       },
       "accessories": {
-        "title": "Accessories",
+        "title": "Basic Accessories",
         "type": "array",
         "items": {
           "type": "object",
@@ -58,8 +117,7 @@
               "title": "RM Device",
               "type": "string",
               "required": true,
-              "default": "Default RM",
-              "description": "Must match the Name of one of the RM devices configured above."
+              "description": "Must match the name of one of the configured RM devices exactly."
             },
             "accessoryType": {
               "title": "Accessory Type",
@@ -76,14 +134,12 @@
             "powerOnCode": {
               "title": "Power On Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code sent to turn the accessory on."
+              "required": true
             },
             "powerOffCode": {
-              "title": "Power Off Signal",
+              "title": "Power Off Signal (leave empty to use Power On Signal)",
               "type": "string",
-              "required": false,
-              "description": "Hex code sent to turn the accessory off. Leave empty to reuse the Power On signal (useful for toggle-only remotes)."
+              "required": false
             }
           }
         }
@@ -103,26 +159,22 @@
               "title": "RM Device",
               "type": "string",
               "required": true,
-              "default": "Default RM",
-              "description": "Must match the Name of one of the RM devices configured above."
+              "description": "Must match the name of one of the configured RM devices exactly."
             },
             "powerOnCode": {
               "title": "Power On Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code sent to turn the light on. Always used for powering on, regardless of the resolved brightness level."
+              "required": true
             },
             "powerOffCode": {
               "title": "Power Off Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code sent to turn the light off. Always used, instead of the Brightness 0% signal."
+              "required": true
             },
             "useLastKnownBrightness": {
               "title": "Use Last Known Brightness",
               "type": "boolean",
-              "required": false,
-              "description": "When turning on, restore the last brightness this light was set to instead of a default/max/highest level."
+              "required": false
             },
             "useDefaultBrightnessLevel": {
               "title": "Set Default Brightness Level",
@@ -142,10 +194,9 @@
               }
             },
             "useMaxBrightnessLevel": {
-              "title": "Set Max Brightness Level",
+              "title": "Cap Maximum Brightness Level",
               "type": "boolean",
-              "required": false,
-              "description": "Caps and remaps the 0-100% slider onto this percentage."
+              "required": false
             },
             "maxBrightnessLevel": {
               "title": "Max Brightness Level (%)",
@@ -161,14 +212,12 @@
             "zeroPercentCode": {
               "title": "Brightness 0% Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code for the lowest (0%) brightness level."
+              "required": true
             },
             "hundredPercentCode": {
               "title": "Brightness 100% Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code for true 100% brightness. Always the actual full-brightness signal, regardless of any max brightness cap set above."
+              "required": true
             },
             "debounceSeconds": {
               "title": "Debounce (seconds)",
@@ -176,7 +225,7 @@
               "minimum": 0,
               "default": 0.5,
               "required": false,
-              "description": "Wait this long after the slider stops moving before sending a signal, so dragging doesn't blast every intermediate position."
+              "description": "Wait this long after the slider stops moving before sending a signal"
             },
             "levels": {
               "title": "Brightness Levels",
@@ -218,20 +267,17 @@
               "title": "RM Device",
               "type": "string",
               "required": true,
-              "default": "Default RM",
-              "description": "Must match the Name of one of the RM devices configured above."
+              "description": "Must match the name of one of the configured RM devices exactly."
             },
             "powerOnCode": {
               "title": "Power On Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code sent to turn the TV on."
+              "required": true
             },
             "powerOffCode": {
-              "title": "Power Off Signal",
+              "title": "Power Off Signal (leave empty to use Power On Signal)",
               "type": "string",
-              "required": false,
-              "description": "Hex code sent to turn the TV off. Leave empty to reuse the Power On signal (useful for toggle-only remotes)."
+              "required": false
             },
             "volumeUpCode": {
               "title": "Volume Up Signal",
@@ -246,8 +292,7 @@
             "muteCode": {
               "title": "Mute Signal",
               "type": "string",
-              "required": false,
-              "description": "Most remotes use a single toggle button for mute - the same signal is sent whether muting or unmuting."
+              "required": false
             },
             "arrowUpCode": {
               "title": "Arrow Up Signal",
@@ -295,7 +340,6 @@
     }
   },
   "layout": [
-    "ntfyTopic",
     {
       "type": "array",
       "key": "rmDevices",
@@ -303,13 +347,33 @@
       "items": [
         "rmDevices[].name",
         "rmDevices[].ip",
-        "rmDevices[].enableTemperatureHumidity"
+        "rmDevices[].enableTemperatureHumidity",
+        "rmDevices[].enableMqttPublish"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "MQTT",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "enableMqtt",
+        "mqttHost",
+        "mqttPort",
+        "mqttUsername",
+        {
+          "key": "mqttPassword",
+          "type": "password"
+        },
+        "mqttBaseTopic"
       ]
     },
     {
       "type": "array",
       "key": "accessories",
-      "title": "Accessories",
+      "title": "Basic Accessories",
+      "expandable": true,
+      "expanded": false,
       "items": [
         "accessories[].name",
         "accessories[].rmDevice",
@@ -322,6 +386,8 @@
       "type": "array",
       "key": "dimmers",
       "title": "Dimmer Lights",
+      "expandable": true,
+      "expanded": false,
       "items": [
         "dimmers[].name",
         "dimmers[].rmDevice",
@@ -339,6 +405,8 @@
           "type": "array",
           "key": "dimmers[].levels",
           "title": "Brightness Levels",
+          "expandable": true,
+          "expanded": false,
           "items": [
             "dimmers[].levels[].level",
             "dimmers[].levels[].code"
@@ -350,6 +418,8 @@
       "type": "array",
       "key": "tvs",
       "title": "TVs",
+      "expandable": true,
+      "expanded": false,
       "items": [
         "tvs[].name",
         "tvs[].rmDevice",
@@ -366,6 +436,15 @@
         "tvs[].infoCode",
         "tvs[].backCode",
         "tvs[].exitCode"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Notifications",
+      "expandable": true,
+      "expanded": true,
+      "items": [
+        "ntfyTopic"
       ]
     }
   ]
