@@ -88,14 +88,14 @@
             "enableTemperatureHumidity": {
               "title": "HomeKit thermometer accessory",
               "type": "boolean",
-              "default": true,
+              "default": false,
               "required": false,
               "description": "Exposes this device's temperature/humidity as a HomeKit thermometer accessory."
             },
             "enableMqttPublish": {
               "title": "Publish to MQTT",
               "type": "boolean",
-              "default": true,
+              "default": false,
               "required": false,
               "description": "Publishes this device's temperature/humidity readings to MQTT. Requires MQTT to be enabled below."
             }
@@ -453,7 +453,7 @@
       "type": "fieldset",
       "title": "Notifications",
       "expandable": true,
-      "expanded": false,
+      "expanded": true,
       "items": [
         "ntfyTopic"
       ]
