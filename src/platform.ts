@@ -10,6 +10,7 @@ import type {
 
 import { BroadlinkClient } from './broadlinkClient';
 import { NtfyNotifier } from './ntfyNotifier';
+import { DEFAULT_MQTT_TOPIC, MqttPublisher } from './mqttPublisher';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
@@ -24,6 +25,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
   public readonly accessories: PlatformAccessory[] = [];
   public readonly broadlinkClient: BroadlinkClient;
   public readonly notifier: NtfyNotifier;
+  public readonly mqttPublisher: MqttPublisher;
 
   private readonly activeUuids = new Set<string>();
 
@@ -41,6 +43,13 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       deviceNames.set(rmDevice.ip, rmDevice.name);
     }
     this.notifier = new NtfyNotifier(this.log, blasterConfig.ntfyTopic, deviceNames);
+    this.mqttPublisher = new MqttPublisher(
+      this.log,
+      blasterConfig.mqttBrokerUrl,
+      blasterConfig.mqttTopic ?? DEFAULT_MQTT_TOPIC,
+      blasterConfig.mqttUsername,
+      blasterConfig.mqttPassword,
+    );
     this.broadlinkClient = new BroadlinkClient(this.log, this.notifier);
 
     this.api.on('didFinishLaunching', () => {
@@ -100,7 +109,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       const sensorName = `${rmDevice.name} Sensor`;
       const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:sensor:${rmDevice.name}`);
       this.upsertAccessory(uuid, sensorName, (accessory) => {
-        new TemperatureHumiditySensorAccessory(this, accessory, rmDevice.ip, sensorName);
+        new TemperatureHumiditySensorAccessory(this, accessory, rmDevice.ip, sensorName, rmDevice.name);
       });
     }
 
