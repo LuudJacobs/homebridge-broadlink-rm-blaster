@@ -12,36 +12,57 @@
         "required": false,
         "description": "Optional. If set, sends a push notification via ntfy.sh the first time an RM device fails to connect, or after 5 consecutive failed temperature/humidity readings, so a dead/unreachable device doesn't fail silently. Subscribe to this topic in the ntfy app to receive it."
       },
-      "mqttBrokerUrl": {
-        "title": "MQTT Broker URL",
-        "type": "string",
+      "enableMqtt": {
+        "title": "Enable MQTT",
+        "type": "boolean",
+        "default": false,
         "required": false,
-        "description": "Optional. If set, publishes temperature/humidity readings as JSON to this MQTT broker, so other plugins (e.g. homebridge-mqttthing) can subscribe to them. Example: mqtt://192.168.1.10:1883"
+        "description": "Publish temperature/humidity readings from RM devices with \"Publish to MQTT\" enabled below to an MQTT broker, so other plugins (e.g. homebridge-mqttthing) can subscribe to them."
       },
-      "mqttTopic": {
-        "title": "MQTT Topic Prefix",
+      "mqttHost": {
+        "title": "Host",
         "type": "string",
         "required": false,
-        "placeholder": "homebridge-broadlink-rm-blaster",
-        "description": "Topic prefix readings are published under, one sub-topic per RM device, e.g. <prefix>/<device-name>. Defaults to \"homebridge-broadlink-rm-blaster\".",
+        "description": "Broker hostname or IP address. Required for MQTT to work - do not include \"mqtt://\" or a port here.",
         "condition": {
-          "functionBody": "return !!model.mqttBrokerUrl;"
+          "functionBody": "return model.enableMqtt === true;"
+        }
+      },
+      "mqttPort": {
+        "title": "Port",
+        "type": "integer",
+        "default": 1883,
+        "required": false,
+        "description": "Required for MQTT to work.",
+        "condition": {
+          "functionBody": "return model.enableMqtt === true;"
         }
       },
       "mqttUsername": {
-        "title": "MQTT Username",
+        "title": "Username",
         "type": "string",
         "required": false,
         "condition": {
-          "functionBody": "return !!model.mqttBrokerUrl;"
+          "functionBody": "return model.enableMqtt === true;"
         }
       },
       "mqttPassword": {
-        "title": "MQTT Password",
+        "title": "Password",
         "type": "string",
         "required": false,
         "condition": {
-          "functionBody": "return !!model.mqttBrokerUrl;"
+          "functionBody": "return model.enableMqtt === true;"
+        }
+      },
+      "mqttBaseTopic": {
+        "title": "Base Topic",
+        "type": "string",
+        "default": "broadlinkrm",
+        "placeholder": "broadlinkrm",
+        "required": false,
+        "description": "Readings are published to <base topic>/<device name>. For example, with the default base topic, a device named \"Kantoor\" publishes to \"broadlinkrm/kantoor\".",
+        "condition": {
+          "functionBody": "return model.enableMqtt === true;"
         }
       },
       "rmDevices": {
@@ -77,9 +98,9 @@
               "type": "boolean",
               "default": true,
               "required": false,
-              "description": "Publishes this device's temperature/humidity readings to MQTT. Requires an MQTT Broker URL to be configured above. Independent of the HomeKit thermometer above.",
+              "description": "Publishes this device's temperature/humidity readings to MQTT. Requires MQTT to be enabled above. Independent of the HomeKit thermometer above.",
               "condition": {
-                "functionBody": "return !!model.mqttBrokerUrl;"
+                "functionBody": "return model.enableMqtt === true;"
               }
             }
           }
@@ -337,14 +358,6 @@
     }
   },
   "layout": [
-    "ntfyTopic",
-    "mqttBrokerUrl",
-    "mqttTopic",
-    "mqttUsername",
-    {
-      "key": "mqttPassword",
-      "type": "password"
-    },
     {
       "type": "array",
       "key": "rmDevices",
@@ -357,65 +370,119 @@
       ]
     },
     {
-      "type": "array",
-      "key": "accessories",
+      "type": "fieldset",
       "title": "Accessories",
+      "expandable": true,
+      "expanded": false,
       "items": [
-        "accessories[].name",
-        "accessories[].rmDevice",
-        "accessories[].accessoryType",
-        "accessories[].powerOnCode",
-        "accessories[].powerOffCode"
-      ]
-    },
-    {
-      "type": "array",
-      "key": "dimmers",
-      "title": "Dimmer Lights",
-      "items": [
-        "dimmers[].name",
-        "dimmers[].rmDevice",
-        "dimmers[].powerOnCode",
-        "dimmers[].powerOffCode",
-        "dimmers[].useLastKnownBrightness",
-        "dimmers[].useDefaultBrightnessLevel",
-        "dimmers[].defaultBrightnessLevel",
-        "dimmers[].useMaxBrightnessLevel",
-        "dimmers[].maxBrightnessLevel",
-        "dimmers[].zeroPercentCode",
-        "dimmers[].hundredPercentCode",
-        "dimmers[].debounceSeconds",
         {
           "type": "array",
-          "key": "dimmers[].levels",
-          "title": "Brightness Levels",
+          "key": "accessories",
           "items": [
-            "dimmers[].levels[].level",
-            "dimmers[].levels[].code"
+            "accessories[].name",
+            "accessories[].rmDevice",
+            "accessories[].accessoryType",
+            "accessories[].powerOnCode",
+            "accessories[].powerOffCode"
           ]
         }
       ]
     },
     {
-      "type": "array",
-      "key": "tvs",
-      "title": "TVs",
+      "type": "fieldset",
+      "title": "Dimmer Lights",
+      "expandable": true,
+      "expanded": false,
       "items": [
-        "tvs[].name",
-        "tvs[].rmDevice",
-        "tvs[].powerOnCode",
-        "tvs[].powerOffCode",
-        "tvs[].volumeUpCode",
-        "tvs[].volumeDownCode",
-        "tvs[].muteCode",
-        "tvs[].arrowUpCode",
-        "tvs[].arrowDownCode",
-        "tvs[].arrowLeftCode",
-        "tvs[].arrowRightCode",
-        "tvs[].selectCode",
-        "tvs[].infoCode",
-        "tvs[].backCode",
-        "tvs[].exitCode"
+        {
+          "type": "array",
+          "key": "dimmers",
+          "items": [
+            "dimmers[].name",
+            "dimmers[].rmDevice",
+            "dimmers[].powerOnCode",
+            "dimmers[].powerOffCode",
+            "dimmers[].useLastKnownBrightness",
+            "dimmers[].useDefaultBrightnessLevel",
+            "dimmers[].defaultBrightnessLevel",
+            "dimmers[].useMaxBrightnessLevel",
+            "dimmers[].maxBrightnessLevel",
+            "dimmers[].zeroPercentCode",
+            "dimmers[].hundredPercentCode",
+            "dimmers[].debounceSeconds",
+            {
+              "type": "fieldset",
+              "title": "Brightness Levels",
+              "expandable": true,
+              "expanded": false,
+              "items": [
+                {
+                  "type": "array",
+                  "key": "dimmers[].levels",
+                  "items": [
+                    "dimmers[].levels[].level",
+                    "dimmers[].levels[].code"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "TVs",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        {
+          "type": "array",
+          "key": "tvs",
+          "items": [
+            "tvs[].name",
+            "tvs[].rmDevice",
+            "tvs[].powerOnCode",
+            "tvs[].powerOffCode",
+            "tvs[].volumeUpCode",
+            "tvs[].volumeDownCode",
+            "tvs[].muteCode",
+            "tvs[].arrowUpCode",
+            "tvs[].arrowDownCode",
+            "tvs[].arrowLeftCode",
+            "tvs[].arrowRightCode",
+            "tvs[].selectCode",
+            "tvs[].infoCode",
+            "tvs[].backCode",
+            "tvs[].exitCode"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "Notifications",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "ntfyTopic"
+      ]
+    },
+    {
+      "type": "fieldset",
+      "title": "MQTT",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "enableMqtt",
+        "mqttHost",
+        "mqttPort",
+        "mqttUsername",
+        {
+          "key": "mqttPassword",
+          "type": "password"
+        },
+        "mqttBaseTopic"
       ]
     }
   ]

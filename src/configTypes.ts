@@ -62,8 +62,10 @@ export interface BlasterPlatformConfig extends PlatformConfig {
   dimmers?: DimmerAccessoryConfig[];
   tvs?: TvAccessoryConfig[];
   ntfyTopic?: string;
-  mqttBrokerUrl?: string;
-  mqttTopic?: string;
+  enableMqtt?: boolean;
+  mqttHost?: string;
+  mqttPort?: number;
   mqttUsername?: string;
   mqttPassword?: string;
+  mqttBaseTopic?: string;
 }
