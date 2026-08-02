@@ -1,16 +1,16 @@
 import mqtt, { MqttClient } from 'mqtt';
 import type { Logger } from 'homebridge';
 
-export const DEFAULT_MQTT_TOPIC = 'homebridge-broadlink-rm-blaster';
+export const DEFAULT_MQTT_BASE_TOPIC = 'broadlinkrm';
 
-export function buildTopic(prefix: string, deviceName: string): string {
+export function buildTopic(baseTopic: string, deviceName: string): string {
   const slug = deviceName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  return `${prefix}/${slug}`;
+  return `${baseTopic}/${slug}`;
 }
 
 // Publishes sensor readings to MQTT so other plugins (e.g. homebridge-mqttthing)
 // can subscribe to them independently of HomeKit. Mirrors NtfyNotifier: a total
-// no-op unless a broker URL is configured, and never lets a connection/publish
+// no-op unless enabled with a host/port, and never lets a connection/publish
 // failure crash or affect the rest of the plugin.
 export class MqttPublisher {
   private client?: MqttClient;
@@ -18,16 +18,18 @@ export class MqttPublisher {
 
   constructor(
     private readonly log: Logger,
-    brokerUrl: string | undefined,
-    private readonly topicPrefix: string,
+    enabled: boolean,
+    host: string | undefined,
+    port: number | undefined,
+    private readonly baseTopic: string,
     username?: string,
     password?: string,
   ) {
-    if (!brokerUrl) {
+    if (!enabled || !host || !port) {
       return;
     }
 
-    this.client = mqtt.connect(brokerUrl, { username, password });
+    this.client = mqtt.connect(`mqtt://${host}:${port}`, { username, password });
     this.client.on('error', (error) => {
       if (!this.loggedConnectionError) {
         this.log.warn(`MQTT connection error: ${error.message}`);
@@ -44,7 +46,7 @@ export class MqttPublisher {
       return;
     }
 
-    const topic = buildTopic(this.topicPrefix, deviceName);
+    const topic = buildTopic(this.baseTopic, deviceName);
     this.client.publish(topic, JSON.stringify({ temperature, humidity }), { retain: true }, (error) => {
       if (error) {
         this.log.warn(`Failed to publish MQTT reading: ${error.message}`);
