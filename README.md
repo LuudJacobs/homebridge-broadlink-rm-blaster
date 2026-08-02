@@ -64,10 +64,12 @@ If you'd rather edit the config file directly, here's an example
 {
   "platform": "BroadlinkRMBlaster",
   "ntfyTopic": "my-homebridge-alerts",
-  "mqttBrokerUrl": "mqtt://192.168.1.10:1883",
-  "mqttTopic": "homebridge-broadlink-rm-blaster",
+  "enableMqtt": true,
+  "mqttHost": "192.168.1.10",
+  "mqttPort": 1883,
   "mqttUsername": "homebridge",
   "mqttPassword": "secret",
+  "mqttBaseTopic": "broadlinkrm",
   "rmDevices": [
     {
       "name": "Default RM",
@@ -140,21 +142,22 @@ If you'd rather edit the config file directly, here's an example
   connects successfully again. The temperature/humidity sensor also triggers
   this after 5 consecutive failed readings (see below), reusing the same
   once-per-outage behavior.
-- `mqttBrokerUrl`: optional. If set, publishes each temperature/humidity
-  reading as a retained JSON message (`{"temperature": 21.5, "humidity": 48}`)
-  to `<mqttTopic>/<device-name>` on this broker, e.g.
-  `homebridge-broadlink-rm-blaster/bedroom-rm`, one sub-topic per RM device
-  with `enableMqttPublish` enabled - so another plugin (e.g.
-  `homebridge-mqttthing`) can subscribe to it. `mqttTopic` defaults to
-  `homebridge-broadlink-rm-blaster` if left empty. `mqttUsername`/
-  `mqttPassword` are optional broker credentials.
+- `enableMqtt`: optional, defaults to `false`. If enabled, publishes each
+  temperature/humidity reading as a retained JSON message
+  (`{"temperature": 21.5, "humidity": 48}`) to `<mqttBaseTopic>/<device-name>`
+  on the configured broker, e.g. `broadlinkrm/bedroom-rm`, one sub-topic per
+  RM device with `enableMqttPublish` enabled - so another plugin (e.g.
+  `homebridge-mqttthing`) can subscribe to it. `mqttHost` (no `mqtt://`
+  prefix) and `mqttPort` are required once enabled; `mqttUsername`/
+  `mqttPassword` are optional broker credentials; `mqttBaseTopic` defaults to
+  `broadlinkrm` if left empty.
 - `rmDevices`: at least one required. Each needs a unique `name` and `ip`.
   Two independent checkboxes control what happens with that device's
   temperature/humidity reading, and either, both, or neither can be enabled:
   `enableTemperatureHumidity` (defaults to `true`) adds a HomeKit
   temperature/humidity sensor accessory for that device;
-  `enableMqttPublish` (defaults to `true`, only shown once `mqttBrokerUrl` is
-  set) publishes its readings to MQTT. If a reading fails 5 times in a row,
+  `enableMqttPublish` (defaults to `true`, only shown once `enableMqtt` is
+  on) publishes its readings to MQTT. If a reading fails 5 times in a row,
   the HomeKit sensor (if enabled) shows "No Response" (rather than a frozen
   stale value) and, if `ntfyTopic` is set, sends a notification - regardless
   of which of the two checkboxes are on.
