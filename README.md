@@ -27,7 +27,7 @@ hb-service add homebridge-broadlink-rm-blaster
 - **Temperature/humidity sensor** optionally expose sensor data
 - **ntfy.sh notifications** push notification when a RM fails to connect
 - **MQTT publishing** optionally publish sensor data to a MQTT broker
-- Fully configurable via the Homebridge Config UI X plugin settings form.
+- Fully configurable via the Homebridge Config UI X plugin settings form
 
 ## Configuration
 
