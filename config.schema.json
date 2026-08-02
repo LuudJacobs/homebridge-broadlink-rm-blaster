@@ -10,7 +10,7 @@
         "title": "ntfy.sh Notification Topic",
         "type": "string",
         "required": false,
-        "description": "Optional. If set, sends a push notification via ntfy.sh the first time an RM device fails to connect, or after 5 consecutive failed temperature/humidity readings."
+        "description": "If set, sends a push notification via ntfy.sh the first time an RM device fails to connect, or after 5 consecutive failed temperature/humidity readings."
       },
       "enableMqtt": {
         "title": "Enable MQTT",
@@ -93,11 +93,11 @@
               "description": "Exposes this device's temperature/humidity as a HomeKit thermometer accessory."
             },
             "enableMqttPublish": {
-              "title": "Publish to MQTT",
+              "title": "Publish temperature and humidity to MQTT",
               "type": "boolean",
               "default": false,
               "required": false,
-              "description": "Publishes this device's temperature/humidity readings to MQTT. Requires MQTT to be enabled below."
+              "description": "Requires MQTT to be enabled and configured below"
             }
           }
         }
@@ -117,7 +117,7 @@
               "title": "RM Device",
               "type": "string",
               "required": true,
-              "description": "Must match the Name of one of the RM devices configured above."
+              "description": "Must match the name of one of the configured RM devices exactly."
             },
             "accessoryType": {
               "title": "Accessory Type",
@@ -134,14 +134,12 @@
             "powerOnCode": {
               "title": "Power On Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code sent to turn the accessory on."
+              "required": true
             },
             "powerOffCode": {
-              "title": "Power Off Signal",
+              "title": "Power Off Signal (leave empty to use Power On Signal)",
               "type": "string",
-              "required": false,
-              "description": "Hex code sent to turn the accessory off. Leave empty to reuse the Power On signal (useful for toggle-only remotes)."
+              "required": false
             }
           }
         }
@@ -161,25 +159,22 @@
               "title": "RM Device",
               "type": "string",
               "required": true,
-              "description": "Must match the Name of one of the RM devices configured above."
+              "description": "Must match the name of one of the configured RM devices exactly."
             },
             "powerOnCode": {
               "title": "Power On Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code sent to turn the light on. Always used for powering on, regardless of the resolved brightness level."
+              "required": true
             },
             "powerOffCode": {
               "title": "Power Off Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code sent to turn the light off. Always used, instead of the Brightness 0% signal."
+              "required": true
             },
             "useLastKnownBrightness": {
               "title": "Use Last Known Brightness",
               "type": "boolean",
-              "required": false,
-              "description": "When turning on, restore the last brightness this light was set to instead of a default/max/highest level."
+              "required": false
             },
             "useDefaultBrightnessLevel": {
               "title": "Set Default Brightness Level",
@@ -199,10 +194,9 @@
               }
             },
             "useMaxBrightnessLevel": {
-              "title": "Set Max Brightness Level",
+              "title": "Cap Maximum Brightness Level",
               "type": "boolean",
-              "required": false,
-              "description": "Caps and remaps the 0-100% slider onto this percentage."
+              "required": false
             },
             "maxBrightnessLevel": {
               "title": "Max Brightness Level (%)",
@@ -218,14 +212,12 @@
             "zeroPercentCode": {
               "title": "Brightness 0% Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code for the lowest (0%) brightness level."
+              "required": true
             },
             "hundredPercentCode": {
               "title": "Brightness 100% Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code for true 100% brightness. Always the actual full-brightness signal, regardless of any max brightness cap set above."
+              "required": true
             },
             "debounceSeconds": {
               "title": "Debounce (seconds)",
@@ -233,7 +225,7 @@
               "minimum": 0,
               "default": 0.5,
               "required": false,
-              "description": "Wait this long after the slider stops moving before sending a signal, so dragging doesn't blast every intermediate position."
+              "description": "Wait this long after the slider stops moving before sending a signal"
             },
             "levels": {
               "title": "Brightness Levels",
@@ -275,19 +267,17 @@
               "title": "RM Device",
               "type": "string",
               "required": true,
-              "description": "Must match the Name of one of the RM devices configured above."
+              "description": "Must match the name of one of the configured RM devices exactly."
             },
             "powerOnCode": {
               "title": "Power On Signal",
               "type": "string",
-              "required": true,
-              "description": "Hex code sent to turn the TV on."
+              "required": true
             },
             "powerOffCode": {
-              "title": "Power Off Signal",
+              "title": "Power Off Signal (leave empty to use Power On Signal)",
               "type": "string",
-              "required": false,
-              "description": "Hex code sent to turn the TV off. Leave empty to reuse the Power On signal (useful for toggle-only remotes)."
+              "required": false
             },
             "volumeUpCode": {
               "title": "Volume Up Signal",
@@ -302,8 +292,7 @@
             "muteCode": {
               "title": "Mute Signal",
               "type": "string",
-              "required": false,
-              "description": "Most remotes use a single toggle button for mute - the same signal is sent whether muting or unmuting."
+              "required": false
             },
             "arrowUpCode": {
               "title": "Arrow Up Signal",
