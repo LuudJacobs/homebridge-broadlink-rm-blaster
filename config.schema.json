@@ -103,6 +103,7 @@
         }
       },
       "accessories": {
+        "title": "Basic Accessories",
         "type": "array",
         "items": {
           "type": "object",
@@ -146,6 +147,7 @@
         }
       },
       "dimmers": {
+        "title": "Dimmer Lights",
         "type": "array",
         "items": {
           "type": "object",
@@ -234,6 +236,7 @@
               "description": "Wait this long after the slider stops moving before sending a signal, so dragging doesn't blast every intermediate position."
             },
             "levels": {
+              "title": "Brightness Levels",
               "type": "array",
               "minItems": 1,
               "items": {
@@ -258,6 +261,7 @@
         }
       },
       "tvs": {
+        "title": "TVs",
         "type": "array",
         "items": {
           "type": "object",
@@ -376,93 +380,73 @@
       ]
     },
     {
-      "type": "fieldset",
+      "type": "array",
+      "key": "accessories",
       "title": "Basic Accessories",
       "expandable": true,
       "expanded": false,
       "items": [
-        {
-          "type": "array",
-          "key": "accessories",
-          "items": [
-            "accessories[].name",
-            "accessories[].rmDevice",
-            "accessories[].accessoryType",
-            "accessories[].powerOnCode",
-            "accessories[].powerOffCode"
-          ]
-        }
+        "accessories[].name",
+        "accessories[].rmDevice",
+        "accessories[].accessoryType",
+        "accessories[].powerOnCode",
+        "accessories[].powerOffCode"
       ]
     },
     {
-      "type": "fieldset",
+      "type": "array",
+      "key": "dimmers",
       "title": "Dimmer Lights",
       "expandable": true,
       "expanded": false,
       "items": [
+        "dimmers[].name",
+        "dimmers[].rmDevice",
+        "dimmers[].powerOnCode",
+        "dimmers[].powerOffCode",
+        "dimmers[].useLastKnownBrightness",
+        "dimmers[].useDefaultBrightnessLevel",
+        "dimmers[].defaultBrightnessLevel",
+        "dimmers[].useMaxBrightnessLevel",
+        "dimmers[].maxBrightnessLevel",
+        "dimmers[].zeroPercentCode",
+        "dimmers[].hundredPercentCode",
+        "dimmers[].debounceSeconds",
         {
           "type": "array",
-          "key": "dimmers",
+          "key": "dimmers[].levels",
+          "title": "Brightness Levels",
+          "expandable": true,
+          "expanded": false,
           "items": [
-            "dimmers[].name",
-            "dimmers[].rmDevice",
-            "dimmers[].powerOnCode",
-            "dimmers[].powerOffCode",
-            "dimmers[].useLastKnownBrightness",
-            "dimmers[].useDefaultBrightnessLevel",
-            "dimmers[].defaultBrightnessLevel",
-            "dimmers[].useMaxBrightnessLevel",
-            "dimmers[].maxBrightnessLevel",
-            "dimmers[].zeroPercentCode",
-            "dimmers[].hundredPercentCode",
-            "dimmers[].debounceSeconds",
-            {
-              "type": "fieldset",
-              "title": "Brightness Levels",
-              "expandable": true,
-              "expanded": false,
-              "items": [
-                {
-                  "type": "array",
-                  "key": "dimmers[].levels",
-                  "items": [
-                    "dimmers[].levels[].level",
-                    "dimmers[].levels[].code"
-                  ]
-                }
-              ]
-            }
+            "dimmers[].levels[].level",
+            "dimmers[].levels[].code"
           ]
         }
       ]
     },
     {
-      "type": "fieldset",
+      "type": "array",
+      "key": "tvs",
       "title": "TVs",
       "expandable": true,
       "expanded": false,
       "items": [
-        {
-          "type": "array",
-          "key": "tvs",
-          "items": [
-            "tvs[].name",
-            "tvs[].rmDevice",
-            "tvs[].powerOnCode",
-            "tvs[].powerOffCode",
-            "tvs[].volumeUpCode",
-            "tvs[].volumeDownCode",
-            "tvs[].muteCode",
-            "tvs[].arrowUpCode",
-            "tvs[].arrowDownCode",
-            "tvs[].arrowLeftCode",
-            "tvs[].arrowRightCode",
-            "tvs[].selectCode",
-            "tvs[].infoCode",
-            "tvs[].backCode",
-            "tvs[].exitCode"
-          ]
-        }
+        "tvs[].name",
+        "tvs[].rmDevice",
+        "tvs[].powerOnCode",
+        "tvs[].powerOffCode",
+        "tvs[].volumeUpCode",
+        "tvs[].volumeDownCode",
+        "tvs[].muteCode",
+        "tvs[].arrowUpCode",
+        "tvs[].arrowDownCode",
+        "tvs[].arrowLeftCode",
+        "tvs[].arrowRightCode",
+        "tvs[].selectCode",
+        "tvs[].infoCode",
+        "tvs[].backCode",
+        "tvs[].exitCode"
       ]
     },
     {
