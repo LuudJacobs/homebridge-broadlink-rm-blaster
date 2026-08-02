@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.3.1] - 2026-08-03
+
+### Added
+- `displayName` in `package.json` ("Broadlink RM Blaster"), so Homebridge UI
+  shows a friendlier name than the npm package name.
+
+### Changed
+- README title changed to "Broadlink RM Blaster <version>".
+
 ## [1.3.0] - 2026-08-02
 
 ### Added
