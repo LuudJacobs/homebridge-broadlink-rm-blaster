@@ -12,6 +12,38 @@
         "required": false,
         "description": "Optional. If set, sends a push notification via ntfy.sh the first time an RM device fails to connect, or after 5 consecutive failed temperature/humidity readings, so a dead/unreachable device doesn't fail silently. Subscribe to this topic in the ntfy app to receive it."
       },
+      "mqttBrokerUrl": {
+        "title": "MQTT Broker URL",
+        "type": "string",
+        "required": false,
+        "description": "Optional. If set, publishes temperature/humidity readings as JSON to this MQTT broker, so other plugins (e.g. homebridge-mqttthing) can subscribe to them. Example: mqtt://192.168.1.10:1883"
+      },
+      "mqttTopic": {
+        "title": "MQTT Topic Prefix",
+        "type": "string",
+        "required": false,
+        "placeholder": "homebridge-broadlink-rm-blaster",
+        "description": "Topic prefix readings are published under, one sub-topic per RM device, e.g. <prefix>/<device-name>. Defaults to \"homebridge-broadlink-rm-blaster\".",
+        "condition": {
+          "functionBody": "return !!model.mqttBrokerUrl;"
+        }
+      },
+      "mqttUsername": {
+        "title": "MQTT Username",
+        "type": "string",
+        "required": false,
+        "condition": {
+          "functionBody": "return !!model.mqttBrokerUrl;"
+        }
+      },
+      "mqttPassword": {
+        "title": "MQTT Password",
+        "type": "string",
+        "required": false,
+        "condition": {
+          "functionBody": "return !!model.mqttBrokerUrl;"
+        }
+      },
       "rmDevices": {
         "title": "Broadlink RM Devices",
         "type": "array",
@@ -296,6 +328,13 @@
   },
   "layout": [
     "ntfyTopic",
+    "mqttBrokerUrl",
+    "mqttTopic",
+    "mqttUsername",
+    {
+      "key": "mqttPassword",
+      "type": "password"
+    },
     {
       "type": "array",
       "key": "rmDevices",
