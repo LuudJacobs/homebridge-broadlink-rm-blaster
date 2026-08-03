@@ -47,7 +47,7 @@ export class MqttPublisher {
     }
 
     const topic = buildTopic(this.baseTopic, deviceName);
-    this.client.publish(topic, JSON.stringify({ temperature, humidity }), { retain: true }, (error) => {
+    this.client.publish(topic, JSON.stringify({ temperature, humidity }), { retain: false }, (error) => {
       if (error) {
         this.log.warn(`Failed to publish MQTT reading: ${error.message}`);
       }
