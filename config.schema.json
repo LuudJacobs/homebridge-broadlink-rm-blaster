@@ -60,7 +60,17 @@
         "default": "broadlinkrm",
         "placeholder": "broadlinkrm",
         "required": false,
-        "description": "Readings are published to <base topic>/<device name>. For example, with the default base topic, a device named \"Blaster\" publishes to \"broadlinkrm/blaster\".",
+        "description": "Readings are published to <base topic>/<device name>. With the default base topic (broadlinkrm) a device named \"Default RM4 Pro\" publishes to \"broadlinkrm/default-rm4-pro\".",
+        "condition": {
+          "functionBody": "return model.enableMqtt === true;"
+        }
+      },
+      "mqttRetain": {
+        "title": "Retain Messages",
+        "type": "boolean",
+        "default": true,
+        "required": false,
+        "description": "Publish readings as MQTT retained messages, so a subscriber connecting later immediately gets the last known reading.",
         "condition": {
           "functionBody": "return model.enableMqtt === true;"
         }
@@ -352,6 +362,10 @@
       ]
     },
     {
+      "type": "help",
+      "helpvalue": "<div style=\"height: 1.5rem\"></div>"
+    },
+    {
       "type": "fieldset",
       "title": "MQTT",
       "expandable": true,
@@ -365,8 +379,13 @@
           "key": "mqttPassword",
           "type": "password"
         },
-        "mqttBaseTopic"
+        "mqttBaseTopic",
+        "mqttRetain"
       ]
+    },
+    {
+      "type": "help",
+      "helpvalue": "<div style=\"height: 1.5rem\"></div>"
     },
     {
       "type": "array",
@@ -381,6 +400,10 @@
         "accessories[].powerOnCode",
         "accessories[].powerOffCode"
       ]
+    },
+    {
+      "type": "help",
+      "helpvalue": "<div style=\"height: 1.5rem\"></div>"
     },
     {
       "type": "array",
@@ -415,6 +438,10 @@
       ]
     },
     {
+      "type": "help",
+      "helpvalue": "<div style=\"height: 1.5rem\"></div>"
+    },
+    {
       "type": "array",
       "key": "tvs",
       "title": "TVs",
@@ -437,6 +464,10 @@
         "tvs[].backCode",
         "tvs[].exitCode"
       ]
+    },
+    {
+      "type": "help",
+      "helpvalue": "<div style=\"height: 1.5rem\"></div>"
     },
     {
       "type": "fieldset",
