@@ -49,6 +49,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       blasterConfig.mqttHost,
       blasterConfig.mqttPort,
       blasterConfig.mqttBaseTopic ?? DEFAULT_MQTT_BASE_TOPIC,
+      blasterConfig.mqttRetain !== false,
       blasterConfig.mqttUsername,
       blasterConfig.mqttPassword,
     );
