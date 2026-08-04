@@ -68,4 +68,5 @@ export interface BlasterPlatformConfig extends PlatformConfig {
   mqttUsername?: string;
   mqttPassword?: string;
   mqttBaseTopic?: string;
+  mqttRetain?: boolean;
 }
