@@ -60,7 +60,7 @@
         "default": "broadlinkrm",
         "placeholder": "broadlinkrm",
         "required": false,
-        "description": "Readings are published to <base topic>/<device name>. For example, with the default base topic, a device named \"Blaster\" publishes to \"broadlinkrm/blaster\".",
+        "description": "Readings are published to <base topic>/<device name>. With the default base topic (broadlinkrm) a device named \"Default RM4 Pro\" publishes to \"broadlinkrm/default-rm4-pro\".",
         "condition": {
           "functionBody": "return model.enableMqtt === true;"
         }
