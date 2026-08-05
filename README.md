@@ -55,9 +55,11 @@ broadlink-rm-learner
 ```
 
 Guided prompts walk you through picking an RM device and learning each
-signal for a Basic Accessory, TV, or Dimmer Light. Backs up `config.json` to
-`config.json.backup` once per session before writing anything. Run
-`broadlink-rm-learner --help` for usage details.
+signal for a Basic Accessory, TV, or Dimmer Light. For RF remotes, enter the
+frequency in MHz when asked (defaults to 433.92, the most common one) rather
+than holding the button for the RM to detect it - more reliable in practice.
+Backs up `config.json` to `config.json.backup` once per session before
+writing anything. Run `broadlink-rm-learner --help` for usage details.
 
 ## Credits
 
