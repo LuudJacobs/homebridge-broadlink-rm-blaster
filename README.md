@@ -3,13 +3,14 @@
 **This Homebridge plugin has been 100% vibe coded with Claude.**
 
 Blast RF and IR signals from Broadlink RM devices using Homebridge. Sends
-hex codes to a known device IP; does not autodiscover devices. Codes can be
-learned interactively via the included `broadlink-rm-learner` command (see
-[Learning hex codes](#learning-hex-codes)).
+hex codes to a known device IP; this plugin does not autodiscover devices.
+Codes can be learned interactively via the included `broadlink-rm-learner`
+command (see [Learning hex codes](#learning-hex-codes)).
 
 ## Requirements
 
 - A Broadlink RM device, unlocked using the official Broadlink app
+- A fixed IP for the RM device, since the plugin does no autodiscovery
 
 ## Installation
 
@@ -21,14 +22,14 @@ hb-service add homebridge-broadlink-rm-blaster
 ## Features
 
 - **Multiple RM devices** configure several Broadlink RMs and assign each accessory to whichever one
+- **Interactive code learning** learn codes straight from your remote and add them to your config
 - **Basic accessories** power on/off
 - **Dimmer lights** one signal per discrete brightness level
 - **TVs** power on/off plus a usable remote in the iOS Remote app
 - **Temperature/humidity sensor** optionally expose sensor data
 - **ntfy.sh notifications** push notification when a RM fails to connect
 - **MQTT publishing** optionally publish sensor data to a MQTT broker
-- **Interactive code learning** guided walkthrough to learn codes straight from your remote and add them to your config (`broadlink-rm-learner`)
-- Fully configurable via the Homebridge Config UI X plugin settings form
+- **Fully configurable** via the Homebridge Config UI X plugin settings form
 
 ## Configuration
 
@@ -44,12 +45,9 @@ your config, run this in the Homebridge shell:
 broadlink-rm-learner
 ```
 
-Guided prompts walk you through picking an RM device and learning each
-signal for a Basic Accessory, TV, or Dimmer Light. For RF remotes, enter the
-frequency in MHz when asked (defaults to 433.92, the most common one) rather
-than holding the button for the RM to detect it - more reliable in practice.
-Backs up `config.json` to `config.json.backup` once per session before
-writing anything. Run `broadlink-rm-learner --help` for usage details.
+Run `broadlink-rm-learner --help` for usage details.
+
+Backs up `config.json` to `config.json.backup` once per session before writing anything.
 
 ## Debugging
 
