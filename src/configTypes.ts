@@ -38,6 +38,18 @@ export interface DimmerAccessoryConfig {
   levels: BrightnessLevelConfig[];
 }
 
+export interface AdvancedSignalConfig {
+  code: string;
+}
+
+export interface AdvancedAccessoryConfig {
+  name: string;
+  rmDevice: string;
+  signals: AdvancedSignalConfig[];
+  offCode?: string;
+  timeoutSeconds?: number;
+}
+
 export interface TvAccessoryConfig {
   name: string;
   rmDevice: string;
@@ -59,6 +71,7 @@ export interface TvAccessoryConfig {
 export interface BlasterPlatformConfig extends PlatformConfig {
   rmDevices: RmDeviceConfig[];
   accessories?: BasicAccessoryConfig[];
+  advancedAccessories?: AdvancedAccessoryConfig[];
   dimmers?: DimmerAccessoryConfig[];
   tvs?: TvAccessoryConfig[];
   ntfyTopic?: string;

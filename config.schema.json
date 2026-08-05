@@ -154,6 +154,53 @@
           }
         }
       },
+      "advancedAccessories": {
+        "title": "Advanced Accessories",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true
+            },
+            "rmDevice": {
+              "title": "RM Device",
+              "type": "string",
+              "required": true,
+              "description": "Must match the name of one of the configured RM devices exactly."
+            },
+            "offCode": {
+              "title": "Off Signal (leave empty for an auto-resetting trigger instead of a real on/off switch)",
+              "type": "string",
+              "required": false
+            },
+            "timeoutSeconds": {
+              "title": "Timeout Between Signals (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "default": 0.5,
+              "required": false
+            },
+            "signals": {
+              "title": "Signals",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "title": "Signal",
+                    "type": "string",
+                    "required": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "dimmers": {
         "title": "Dimmer Lights",
         "type": "array",
@@ -399,6 +446,33 @@
         "accessories[].accessoryType",
         "accessories[].powerOnCode",
         "accessories[].powerOffCode"
+      ]
+    },
+    {
+      "type": "help",
+      "helpvalue": "<div style=\"height: 1.5rem\"></div>"
+    },
+    {
+      "type": "array",
+      "key": "advancedAccessories",
+      "title": "Advanced Accessories",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "advancedAccessories[].name",
+        "advancedAccessories[].rmDevice",
+        "advancedAccessories[].offCode",
+        "advancedAccessories[].timeoutSeconds",
+        {
+          "type": "array",
+          "key": "advancedAccessories[].signals",
+          "title": "Signals",
+          "expandable": true,
+          "expanded": false,
+          "items": [
+            "advancedAccessories[].signals[].code"
+          ]
+        }
       ]
     },
     {

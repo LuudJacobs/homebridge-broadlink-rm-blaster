@@ -9,6 +9,8 @@ import type { HomebridgeConfigFile } from './configFile';
 import { PLATFORM_NAME } from './settings';
 import { initTerminal, readKey, readLine, setSigintHandler } from './terminal';
 import type {
+  AdvancedAccessoryConfig,
+  AdvancedSignalConfig,
   BasicAccessoryConfig,
   BrightnessLevelConfig,
   DimmerAccessoryConfig,
@@ -19,6 +21,7 @@ import type {
 const USAGE = 'Usage: broadlink-rm-learner [--config <path>]';
 
 const DEFAULT_RF_FREQUENCY_MHZ = 433.92;
+const DEFAULT_TIMEOUT_SECONDS = 0.5;
 
 const HELP = `${USAGE}
 
@@ -46,6 +49,7 @@ type LearnOutcome = { status: 'learned'; hex: string } | { status: 'cancelled' }
 
 type PendingItem =
   | { type: 'accessories'; item: BasicAccessoryConfig }
+  | { type: 'advancedAccessories'; item: AdvancedAccessoryConfig }
   | { type: 'tvs'; item: TvAccessoryConfig }
   | { type: 'dimmers'; item: DimmerAccessoryConfig };
 
@@ -221,6 +225,76 @@ async function learnBasicAccessory(
   }
 
   pendingItems.push({ type: 'accessories', item });
+  console.log(`\n"${name}" queued to be saved.`);
+}
+
+async function askTimeoutSeconds(): Promise<number> {
+  for (;;) {
+    const answer = (await readLine(`\nTimeout between signals in seconds (Enter for ${DEFAULT_TIMEOUT_SECONDS}): `)).trim();
+    if (!answer) {
+      return DEFAULT_TIMEOUT_SECONDS;
+    }
+    const seconds = Number(answer);
+    if (Number.isFinite(seconds) && seconds >= 0) {
+      return seconds;
+    }
+    console.log('Enter a number 0 or greater.');
+  }
+}
+
+async function learnAdvancedAccessory(
+  client: BroadlinkClient,
+  rmDevices: RmDeviceConfig[],
+  pendingItems: PendingItem[],
+): Promise<void> {
+  const rmDevice = await pickRmDevice(rmDevices);
+  if (!(await connectToDevice(client, rmDevice.ip))) {
+    return;
+  }
+  const name = await askNonEmpty('\nName for this advanced accessory: ');
+  const settings = await askSignalSettings();
+
+  const signals: AdvancedSignalConfig[] = [];
+  for (;;) {
+    const result = await learnRequiredSignal(client, rmDevice.ip, settings, `Signal ${signals.length + 1}`);
+    if (result.status === 'cancelled') {
+      console.log('Cancelled - nothing saved for this advanced accessory.');
+      return;
+    }
+    signals.push({ code: result.hex });
+
+    const choice = await readKey(
+      `\n${signals.length} signal(s) learned. Enter to learn another, "d" when done, or "q" to cancel: `,
+      ['', 'd', 'q'],
+    );
+    if (choice === 'q') {
+      console.log('Cancelled - nothing saved for this advanced accessory.');
+      return;
+    }
+    if (choice === 'd') {
+      break;
+    }
+  }
+
+  const off = await learnOptionalSignal(client, rmDevice.ip, settings, 'Off signal (skip for an auto-resetting trigger)');
+  if (off.status === 'cancelled') {
+    console.log('Cancelled - nothing saved for this advanced accessory.');
+    return;
+  }
+
+  const item: AdvancedAccessoryConfig = {
+    name,
+    rmDevice: rmDevice.name,
+    signals,
+  };
+  if (off.status === 'learned') {
+    item.offCode = off.hex;
+  }
+  if (signals.length > 1) {
+    item.timeoutSeconds = await askTimeoutSeconds();
+  }
+
+  pendingItems.push({ type: 'advancedAccessories', item });
   console.log(`\n"${name}" queued to be saved.`);
 }
 
@@ -446,8 +520,9 @@ async function main(): Promise<void> {
     console.log('  1. Basic Accessory (light/switch/outlet/fan)');
     console.log('  2. TV');
     console.log('  3. Dimmer Light');
+    console.log('  4. Advanced Accessory (multiple signals per press)');
     console.log('  q. Quit and save');
-    const choice = await readKey('Choice: ', ['1', '2', '3', 'q']);
+    const choice = await readKey('Choice: ', ['1', '2', '3', '4', 'q']);
 
     if (choice === '1') {
       await learnBasicAccessory(client, platform.rmDevices, pendingItems);
@@ -455,6 +530,8 @@ async function main(): Promise<void> {
       await learnTv(client, platform.rmDevices, pendingItems);
     } else if (choice === '3') {
       await learnDimmer(client, platform.rmDevices, pendingItems);
+    } else if (choice === '4') {
+      await learnAdvancedAccessory(client, platform.rmDevices, pendingItems);
     } else {
       break;
     }
