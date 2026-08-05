@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
 import * as fs from 'fs';
-import * as readline from 'readline/promises';
 
 import { BroadlinkClient } from './broadlinkClient';
 import { createConsoleLogger } from './cli';
 import { backupConfig, findConfigPath, findPlatformBlock, writeConfigAtomically } from './configFile';
 import type { HomebridgeConfigFile } from './configFile';
 import { PLATFORM_NAME } from './settings';
+import { initTerminal, readKey, readLine, setSigintHandler } from './terminal';
 import type {
   BasicAccessoryConfig,
   BrightnessLevelConfig,
@@ -17,6 +17,8 @@ import type {
 } from './configTypes';
 
 const USAGE = 'Usage: broadlink-rm-learner [--config <path>]';
+
+const DEFAULT_RF_FREQUENCY_MHZ = 433.92;
 
 const HELP = `${USAGE}
 
@@ -35,6 +37,11 @@ Options:
 
 type SignalType = 'ir' | 'rf';
 
+interface SignalSettings {
+  signalType: SignalType;
+  frequencyMHz?: number;
+}
+
 type LearnOutcome = { status: 'learned'; hex: string } | { status: 'cancelled' };
 
 type PendingItem =
@@ -46,29 +53,9 @@ type PendingItem =
 // Ctrl-C can abort it cleanly instead of the process just dying mid-learn.
 let activeAbortController: AbortController | null = null;
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function countdown(): Promise<void> {
-  for (const n of [3, 2, 1]) {
-    console.log(String(n));
-    await sleep(1000);
-  }
-}
-
-async function askChoice(rl: readline.Interface, prompt: string, choices: string[]): Promise<string> {
+async function askNonEmpty(prompt: string): Promise<string> {
   for (;;) {
-    const answer = (await rl.question(prompt)).trim().toLowerCase();
-    if (choices.includes(answer)) {
-      return answer;
-    }
-  }
-}
-
-async function askNonEmpty(rl: readline.Interface, prompt: string): Promise<string> {
-  for (;;) {
-    const answer = (await rl.question(prompt)).trim();
+    const answer = (await readLine(prompt)).trim();
     if (answer) {
       return answer;
     }
@@ -76,47 +63,57 @@ async function askNonEmpty(rl: readline.Interface, prompt: string): Promise<stri
   }
 }
 
-async function pickRmDevice(rl: readline.Interface, rmDevices: RmDeviceConfig[]): Promise<RmDeviceConfig> {
+async function pickRmDevice(rmDevices: RmDeviceConfig[]): Promise<RmDeviceConfig> {
   console.log('\nWhich RM device?');
   rmDevices.forEach((device, index) => console.log(`  ${index + 1}. ${device.name} (${device.ip})`));
+  const choices = rmDevices.map((_, index) => String(index + 1));
+  const choice = await readKey('Choice: ', choices);
+  return rmDevices[Number(choice) - 1];
+}
+
+async function askFrequency(): Promise<number> {
   for (;;) {
-    const answer = (await rl.question('Enter a number: ')).trim();
-    const index = Number(answer) - 1;
-    if (Number.isInteger(index) && rmDevices[index]) {
-      return rmDevices[index];
+    const answer = (await readLine(`\nRF frequency in MHz (Enter for ${DEFAULT_RF_FREQUENCY_MHZ}): `)).trim();
+    if (!answer) {
+      return DEFAULT_RF_FREQUENCY_MHZ;
     }
-    console.log('Enter a valid number from the list above.');
+    const frequency = Number(answer);
+    if (Number.isFinite(frequency) && frequency > 0) {
+      return frequency;
+    }
+    console.log(`Enter a positive number, e.g. ${DEFAULT_RF_FREQUENCY_MHZ}.`);
   }
 }
 
-async function askSignalType(rl: readline.Interface): Promise<SignalType> {
-  const choice = await askChoice(rl, '\nIs the remote for this accessory IR or RF? [IR/rf] (Enter for IR): ', ['', 'ir', 'rf']);
-  return choice === 'rf' ? 'rf' : 'ir';
+async function askSignalSettings(): Promise<SignalSettings> {
+  const choice = await readKey('\nIs the remote for this accessory IR or RF? [I/r]: ', ['', 'i', 'r']);
+  if (choice === 'r') {
+    const frequencyMHz = await askFrequency();
+    return { signalType: 'rf', frequencyMHz };
+  }
+  return { signalType: 'ir' };
 }
 
 async function runLearnLoop(
   client: BroadlinkClient,
   ip: string,
-  signalType: SignalType,
+  settings: SignalSettings,
   label: string,
-  rl: readline.Interface,
 ): Promise<LearnOutcome> {
   for (;;) {
-    console.log(`\nLearning "${label}"...`);
-    await countdown();
-    console.log(signalType === 'rf' ? 'Hold the button now (finding frequency)...' : 'Press the button now...');
+    console.log(
+      settings.signalType === 'rf'
+        ? `\nLearning "${label}" - press the button now (${settings.frequencyMHz} MHz)...`
+        : `\nLearning "${label}" - press the button now...`,
+    );
 
     const controller = new AbortController();
     activeAbortController = controller;
 
     let hex: string;
     try {
-      hex = signalType === 'rf'
-        ? await client.learnRfCode(ip, controller.signal, (phase) => {
-          if (phase === 'capture') {
-            console.log('Frequency found - press the button again now...');
-          }
-        })
+      hex = settings.signalType === 'rf'
+        ? await client.learnRfCode(ip, settings.frequencyMHz as number, controller.signal)
         : await client.learnIrCode(ip, controller.signal);
     } catch (error) {
       activeAbortController = null;
@@ -125,7 +122,7 @@ async function runLearnLoop(
         return { status: 'cancelled' };
       }
       console.log(`Failed: ${message}`);
-      const retry = await askChoice(rl, 'Enter to retry, or "q" to cancel this accessory: ', ['', 'q']);
+      const retry = await readKey('Enter to retry, or "q" to cancel this accessory: ', ['', 'q']);
       if (retry === 'q') {
         return { status: 'cancelled' };
       }
@@ -134,7 +131,7 @@ async function runLearnLoop(
     activeAbortController = null;
 
     console.log(`Captured: ${hex}`);
-    const confirm = await askChoice(rl, 'Enter to keep, "r" to retry, or "q" to cancel this accessory: ', ['', 'r', 'q']);
+    const confirm = await readKey('Enter to keep, "r" to retry, or "q" to cancel this accessory: ', ['', 'r', 'q']);
     if (confirm === 'r') {
       continue;
     }
@@ -148,51 +145,47 @@ async function runLearnLoop(
 async function learnRequiredSignal(
   client: BroadlinkClient,
   ip: string,
-  signalType: SignalType,
+  settings: SignalSettings,
   label: string,
-  rl: readline.Interface,
 ): Promise<LearnOutcome> {
-  return runLearnLoop(client, ip, signalType, label, rl);
+  return runLearnLoop(client, ip, settings, label);
 }
 
 async function learnOptionalSignal(
   client: BroadlinkClient,
   ip: string,
-  signalType: SignalType,
+  settings: SignalSettings,
   label: string,
-  rl: readline.Interface,
 ): Promise<LearnOutcome | { status: 'skipped' }> {
-  const choice = await askChoice(
-    rl,
-    `\nLearn "${label}"? Press Enter to learn it, "c" to skip, or "q" to cancel this accessory: `,
-    ['', 'c', 'q'],
+  const choice = await readKey(
+    `\nLearn "${label}"? Enter to learn it, "s" to skip, or "q" to cancel this accessory: `,
+    ['', 's', 'q'],
   );
-  if (choice === 'c') {
+  if (choice === 's') {
     return { status: 'skipped' };
   }
   if (choice === 'q') {
     return { status: 'cancelled' };
   }
-  return runLearnLoop(client, ip, signalType, label, rl);
+  return runLearnLoop(client, ip, settings, label);
 }
 
 async function learnBasicAccessory(
-  rl: readline.Interface,
   client: BroadlinkClient,
   rmDevices: RmDeviceConfig[],
   pendingItems: PendingItem[],
 ): Promise<void> {
-  const rmDevice = await pickRmDevice(rl, rmDevices);
-  const name = await askNonEmpty(rl, '\nName for this accessory: ');
-  const signalType = await askSignalType(rl);
+  const rmDevice = await pickRmDevice(rmDevices);
+  const name = await askNonEmpty('\nName for this accessory: ');
+  const settings = await askSignalSettings();
 
-  const powerOn = await learnRequiredSignal(client, rmDevice.ip, signalType, 'Power On', rl);
+  const powerOn = await learnRequiredSignal(client, rmDevice.ip, settings, 'Power On');
   if (powerOn.status === 'cancelled') {
     console.log('Cancelled - nothing saved for this accessory.');
     return;
   }
 
-  const powerOff = await learnOptionalSignal(client, rmDevice.ip, signalType, 'Power Off (skip to reuse Power On)', rl);
+  const powerOff = await learnOptionalSignal(client, rmDevice.ip, settings, 'Power Off (skip to reuse Power On)');
   if (powerOff.status === 'cancelled') {
     console.log('Cancelled - nothing saved for this accessory.');
     return;
@@ -213,16 +206,15 @@ async function learnBasicAccessory(
 }
 
 async function learnTv(
-  rl: readline.Interface,
   client: BroadlinkClient,
   rmDevices: RmDeviceConfig[],
   pendingItems: PendingItem[],
 ): Promise<void> {
-  const rmDevice = await pickRmDevice(rl, rmDevices);
-  const name = await askNonEmpty(rl, '\nName for this TV: ');
-  const signalType = await askSignalType(rl);
+  const rmDevice = await pickRmDevice(rmDevices);
+  const name = await askNonEmpty('\nName for this TV: ');
+  const settings = await askSignalSettings();
 
-  const powerOn = await learnRequiredSignal(client, rmDevice.ip, signalType, 'Power On', rl);
+  const powerOn = await learnRequiredSignal(client, rmDevice.ip, settings, 'Power On');
   if (powerOn.status === 'cancelled') {
     console.log('Cancelled - nothing saved for this TV.');
     return;
@@ -250,7 +242,7 @@ async function learnTv(
   ];
 
   for (const [label, field] of optionalSignals) {
-    const result = await learnOptionalSignal(client, rmDevice.ip, signalType, label, rl);
+    const result = await learnOptionalSignal(client, rmDevice.ip, settings, label);
     if (result.status === 'cancelled') {
       console.log('Cancelled - nothing saved for this TV.');
       return;
@@ -264,9 +256,9 @@ async function learnTv(
   console.log(`\n"${name}" queued to be saved.`);
 }
 
-async function askStepCount(rl: readline.Interface): Promise<number> {
+async function askStepCount(): Promise<number> {
   for (;;) {
-    const answer = (await rl.question(
+    const answer = (await readLine(
       '\nHow many brightness steps, including 100% (e.g. 5 for 20/40/60/80/100)? Minimum 2: ',
     )).trim();
     const steps = Number(answer);
@@ -278,14 +270,13 @@ async function askStepCount(rl: readline.Interface): Promise<number> {
 }
 
 async function learnDimmer(
-  rl: readline.Interface,
   client: BroadlinkClient,
   rmDevices: RmDeviceConfig[],
   pendingItems: PendingItem[],
 ): Promise<void> {
-  const rmDevice = await pickRmDevice(rl, rmDevices);
-  const name = await askNonEmpty(rl, '\nName for this dimmer light: ');
-  const signalType = await askSignalType(rl);
+  const rmDevice = await pickRmDevice(rmDevices);
+  const name = await askNonEmpty('\nName for this dimmer light: ');
+  const settings = await askSignalSettings();
 
   const requiredSignals: Array<[string, string]> = [
     ['Power On', 'powerOnCode'],
@@ -296,7 +287,7 @@ async function learnDimmer(
   const codes: Record<string, string> = {};
 
   for (const [label, field] of requiredSignals) {
-    const result = await learnRequiredSignal(client, rmDevice.ip, signalType, label, rl);
+    const result = await learnRequiredSignal(client, rmDevice.ip, settings, label);
     if (result.status === 'cancelled') {
       console.log('Cancelled - nothing saved for this dimmer light.');
       return;
@@ -304,11 +295,11 @@ async function learnDimmer(
     codes[field] = result.hex;
   }
 
-  const steps = await askStepCount(rl);
+  const steps = await askStepCount();
   const levels: BrightnessLevelConfig[] = [];
   for (let i = 1; i < steps; i++) {
     const percent = Math.round((i * 100) / steps);
-    const result = await learnRequiredSignal(client, rmDevice.ip, signalType, `Brightness ${percent}%`, rl);
+    const result = await learnRequiredSignal(client, rmDevice.ip, settings, `Brightness ${percent}%`);
     if (result.status === 'cancelled') {
       console.log('Cancelled - nothing saved for this dimmer light.');
       return;
@@ -403,11 +394,11 @@ async function main(): Promise<void> {
   backupConfig(configPath);
   console.log(`Backed up config.json to ${configPath}.backup`);
 
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   const client = new BroadlinkClient(createConsoleLogger());
   const pendingItems: PendingItem[] = [];
 
-  rl.on('SIGINT', () => {
+  initTerminal();
+  setSigintHandler(() => {
     console.log('\n\nCtrl-C - stopping.');
     activeAbortController?.abort();
     finishAndExit(configPath, pendingItems);
@@ -419,14 +410,14 @@ async function main(): Promise<void> {
     console.log('  2. TV');
     console.log('  3. Dimmer Light');
     console.log('  q. Quit and save');
-    const choice = await askChoice(rl, 'Choice: ', ['1', '2', '3', 'q']);
+    const choice = await readKey('Choice: ', ['1', '2', '3', 'q']);
 
     if (choice === '1') {
-      await learnBasicAccessory(rl, client, platform.rmDevices, pendingItems);
+      await learnBasicAccessory(client, platform.rmDevices, pendingItems);
     } else if (choice === '2') {
-      await learnTv(rl, client, platform.rmDevices, pendingItems);
+      await learnTv(client, platform.rmDevices, pendingItems);
     } else if (choice === '3') {
-      await learnDimmer(rl, client, platform.rmDevices, pendingItems);
+      await learnDimmer(client, platform.rmDevices, pendingItems);
     } else {
       break;
     }

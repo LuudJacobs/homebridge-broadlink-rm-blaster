@@ -15,6 +15,23 @@ export function parseHexCode(hexCode: string): Buffer {
   return Buffer.from(hexCode.replace(/\s+/g, ''), 'hex');
 }
 
+// Builds the raw "find RF packet at a known frequency" command (0x1b with the
+// frequency in kHz appended as a little-endian uint32) - matches
+// python-broadlink's rmpro.find_rf_packet(frequency=...), which is what
+// actually works reliably (confirmed: our own blind-sweep attempt via
+// enterRFSweep()/checkRFData()/checkRFData2() failed on real hardware, while
+// this known-frequency approach - same as the learn-broadlink-rm4-codes
+// Python project - succeeded on the first try against the same device).
+// kiwicam-broadlinkjs-rm's own checkRFData2() always sends this command with
+// an EMPTY payload (blind, no known frequency), so it can't be reused here -
+// this constructs the packet by hand instead, via Device's public
+// sendPacket()/request_header.
+export function buildFindRfPacket(frequencyMHz: number, requestHeader: Buffer): Buffer {
+  const frequencyKhz = Buffer.alloc(4);
+  frequencyKhz.writeUInt32LE(Math.round(frequencyMHz * 1000), 0);
+  return Buffer.concat([requestHeader, Buffer.from([0x1b]), frequencyKhz]);
+}
+
 // The manual/direct-by-IP placeholder MAC. Confirmed (via a real regression:
 // see the comment on broadlinkInstances below) that real Broadlink RM4 Pro
 // units silently refuse to authenticate at all if this is anything other
@@ -116,14 +133,14 @@ export class BroadlinkClient {
     });
   }
 
-  // Waits for one of `events` to fire, actively re-issuing `poll()` at a
-  // fixed interval in the meantime (this library never pushes learning data
+  // Waits for `event` to fire, actively re-issuing `poll()` at a fixed
+  // interval in the meantime (this library never pushes learning data
   // unprompted - it has to be asked again on a timer, same pattern as the
   // Python reference project this CLI flow is modeled on). `signal` lets the
   // caller cancel mid-wait (Ctrl-C / "press q to cancel" in the learner CLI).
   private waitForEvent(
     device: Device,
-    events: Array<'rawData' | 'rawRFData' | 'rawRFData2'>,
+    event: 'rawData',
     poll: () => void,
     signal: AbortSignal,
     timeoutMessage: string,
@@ -137,9 +154,7 @@ export class BroadlinkClient {
       const cleanup = () => {
         clearTimeout(timeout);
         clearInterval(interval);
-        for (const event of events) {
-          device.removeListener(event, onData);
-        }
+        device.removeListener(event, onData);
         signal.removeEventListener('abort', onAbort);
       };
       const onData = (data: Buffer) => {
@@ -156,9 +171,7 @@ export class BroadlinkClient {
       }, LEARN_TIMEOUT_MS);
       const interval = setInterval(poll, LEARN_POLL_INTERVAL_MS);
 
-      for (const event of events) {
-        device.on(event, onData);
-      }
+      device.on(event, onData);
       signal.addEventListener('abort', onAbort);
     });
   }
@@ -168,33 +181,20 @@ export class BroadlinkClient {
     const device = await this.getDevice(ip);
     device.enterLearning();
     try {
-      const data = await this.waitForEvent(device, ['rawData'], () => device.checkData(), signal, 'Timed out waiting for a signal.');
+      const data = await this.waitForEvent(device, 'rawData', () => device.checkData(), signal, 'Timed out waiting for a signal.');
       return data.toString('hex');
     } finally {
       device.cancelLearn();
     }
   }
 
-  // Two-phase: hold the button during the frequency sweep (onPhase('sweep')),
-  // then press it again once the frequency locks (onPhase('capture')) to
-  // actually capture the code. Which of rawRFData/rawRFData2 the device
-  // reports frequency-lock through depends on the real hardware generation
-  // (RM4 Pro vs RM Pro), so both are accepted.
-  async learnRfCode(ip: string, signal: AbortSignal, onPhase: (phase: 'sweep' | 'capture') => void): Promise<string> {
+  // Known-frequency RF learning (see buildFindRfPacket above for why) - also
+  // one-shot: press the button any time after this is called, same as IR.
+  async learnRfCode(ip: string, frequencyMHz: number, signal: AbortSignal): Promise<string> {
     const device = await this.getDevice(ip);
-    device.enterRFSweep();
-    onPhase('sweep');
-    await this.waitForEvent(
-      device,
-      ['rawRFData', 'rawRFData2'],
-      () => device.checkRFData(),
-      signal,
-      'Timed out waiting for the RF frequency to be detected.',
-    );
-
-    onPhase('capture');
+    await device.sendPacket(0x6a, buildFindRfPacket(frequencyMHz, device.request_header));
     try {
-      const data = await this.waitForEvent(device, ['rawData'], () => device.checkRFData2(), signal, 'Timed out waiting for a signal.');
+      const data = await this.waitForEvent(device, 'rawData', () => device.checkData(), signal, 'Timed out waiting for a signal.');
       return data.toString('hex');
     } finally {
       device.cancelLearn();
