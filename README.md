@@ -5,9 +5,7 @@
 Blast RF and IR signals from Broadlink RM devices using Homebridge. Sends
 hex codes to a known device IP; does not autodiscover devices. Codes can be
 learned interactively via the included `broadlink-rm-learner` command (see
-[Debugging](#debugging)) or with the standalone
-[learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes)
-project.
+[Learning hex codes](#learning-hex-codes)).
 
 ## Requirements
 
@@ -37,18 +35,10 @@ hb-service add homebridge-broadlink-rm-blaster
 This plugin can be fully configured from the Homebridge Config UI X plugin
 settings form.
 
-## Debugging
-
-To send a single hex code straight to your RM, bypassing Homebridge/HomeKit entirely run this in the Homebridge shell:
-
-```bash
-broadlink-rm-blaster <ip> <hexCode>
-```
-
-Run `broadlink-rm-blaster --help` for usage details.
+## Learning hex codes
 
 To learn codes straight from a remote and add the resulting accessory to
-your config, run this in the Homebridge shell instead:
+your config, run this in the Homebridge shell:
 
 ```bash
 broadlink-rm-learner
@@ -60,6 +50,16 @@ frequency in MHz when asked (defaults to 433.92, the most common one) rather
 than holding the button for the RM to detect it - more reliable in practice.
 Backs up `config.json` to `config.json.backup` once per session before
 writing anything. Run `broadlink-rm-learner --help` for usage details.
+
+## Debugging
+
+To send a single hex code straight to your RM, bypassing Homebridge/HomeKit entirely run this in the Homebridge shell:
+
+```bash
+broadlink-rm-blaster <ip> <hexCode>
+```
+
+Run `broadlink-rm-blaster --help` for usage details.
 
 ## Credits
 
