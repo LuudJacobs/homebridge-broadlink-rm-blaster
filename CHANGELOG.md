@@ -6,6 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.4.0] - 2026-08-05
+
+### Added
+- `broadlink-rm-learner`, an interactive CLI to learn IR/RF codes straight
+  from a remote and write the resulting Basic Accessory, TV, or Dimmer
+  Light into `config.json` - backs up `config.json` to `config.json.backup`
+  once per session before writing anything. RF codes are learned at a known
+  frequency (defaults to 433.92 MHz, entered by hand) rather than an
+  automatic sweep, which proved unreliable on real hardware. Menu choices
+  resolve on a single keypress, no Enter required. Connects to the RM
+  device before prompting to press any button, rather than after. Dimmer
+  Light learning asks the number of brightness levels up front, then Power
+  On/Off, then each brightness signal from 0% up to 100% last.
+
+### Changed
+- README: moved the learner CLI's docs into a new "Learning hex codes"
+  section under Configuration (previously part of Debugging), and removed
+  the link to the standalone `learn-broadlink-rm4-codes` project.
+
 ## [1.3.2] - 2026-08-04
 
 ### Added

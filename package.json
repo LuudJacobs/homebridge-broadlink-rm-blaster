@@ -1,7 +1,7 @@
 {
   "name": "homebridge-broadlink-rm-blaster",
   "displayName": "Broadlink RM Blaster",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "description": "Blast RF and IR signals from Broadlink RM devices using Homebridge",
   "author": "Luud Jacobs",
   "license": "MIT",
@@ -19,7 +19,8 @@
   },
   "main": "dist/index.js",
   "bin": {
-    "broadlink-rm-blaster": "dist/cli.js"
+    "broadlink-rm-blaster": "dist/cli.js",
+    "broadlink-rm-learner": "dist/learner.js"
   },
   "files": [
     "dist",

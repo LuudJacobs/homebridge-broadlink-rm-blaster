@@ -1,15 +1,16 @@
-# Broadlink RM Blaster 1.3.2
+# Broadlink RM Blaster 1.4.0
 
 **This Homebridge plugin has been 100% vibe coded with Claude.**
 
 Blast RF and IR signals from Broadlink RM devices using Homebridge. Sends
-pre-recorded hex codes to a known device IP; does not learn signals or
-autodiscover devices. To capture hex codes from your own remotes, see
-[learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
+hex codes to a known device IP; this plugin does not autodiscover devices.
+Codes can be learned interactively via the included `broadlink-rm-learner`
+command (see [Learning hex codes](#learning-hex-codes)).
 
 ## Requirements
 
 - A Broadlink RM device, unlocked using the official Broadlink app
+- A fixed IP for the RM device, since the plugin does no autodiscovery
 
 ## Installation
 
@@ -21,18 +22,32 @@ hb-service add homebridge-broadlink-rm-blaster
 ## Features
 
 - **Multiple RM devices** configure several Broadlink RMs and assign each accessory to whichever one
+- **Interactive code learning** learn codes straight from your remote and add them to your config
 - **Basic accessories** power on/off
 - **Dimmer lights** one signal per discrete brightness level
 - **TVs** power on/off plus a usable remote in the iOS Remote app
 - **Temperature/humidity sensor** optionally expose sensor data
 - **ntfy.sh notifications** push notification when a RM fails to connect
 - **MQTT publishing** optionally publish sensor data to a MQTT broker
-- Fully configurable via the Homebridge Config UI X plugin settings form
+- **Fully configurable** via the Homebridge Config UI X plugin settings form
 
 ## Configuration
 
 This plugin can be fully configured from the Homebridge Config UI X plugin
 settings form.
+
+## Learning hex codes
+
+To learn codes straight from a remote and add the resulting accessory to
+your config, run this in the Homebridge shell:
+
+```bash
+broadlink-rm-learner
+```
+
+Run `broadlink-rm-learner --help` for usage details.
+
+Backs up `config.json` to `config.json.backup` once per session before writing anything.
 
 ## Debugging
 
