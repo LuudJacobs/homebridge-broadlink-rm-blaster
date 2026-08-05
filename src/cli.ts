@@ -25,7 +25,7 @@ export function isValidHexCode(hexCode: string): boolean {
   return stripped.length > 0 && stripped.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(stripped);
 }
 
-function createConsoleLogger(): Logger {
+export function createConsoleLogger(): Logger {
   const noop = (): void => {};
   return {
     prefix: undefined,

@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Added `broadlink-rm-learner`, an interactive CLI to learn IR/RF codes
+  straight from a remote and write the resulting Basic Accessory, TV, or
+  Dimmer Light into `config.json` - backs up `config.json` to
+  `config.json.backup` once per session before writing anything.
+
 ## [1.3.2] - 2026-08-04
 
 ### Added

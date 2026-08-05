@@ -1,11 +1,13 @@
-# Broadlink RM Blaster 1.3.2
+# Broadlink RM Blaster 1.4.0
 
 **This Homebridge plugin has been 100% vibe coded with Claude.**
 
 Blast RF and IR signals from Broadlink RM devices using Homebridge. Sends
-pre-recorded hex codes to a known device IP; does not learn signals or
-autodiscover devices. To capture hex codes from your own remotes, see
-[learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes).
+hex codes to a known device IP; does not autodiscover devices. Codes can be
+learned interactively via the included `broadlink-rm-learner` command (see
+[Debugging](#debugging)) or with the standalone
+[learn-broadlink-rm4-codes](https://github.com/LuudJacobs/learn-broadlink-rm4-codes)
+project.
 
 ## Requirements
 
@@ -27,6 +29,7 @@ hb-service add homebridge-broadlink-rm-blaster
 - **Temperature/humidity sensor** optionally expose sensor data
 - **ntfy.sh notifications** push notification when a RM fails to connect
 - **MQTT publishing** optionally publish sensor data to a MQTT broker
+- **Interactive code learning** guided walkthrough to learn codes straight from your remote and add them to your config (`broadlink-rm-learner`)
 - Fully configurable via the Homebridge Config UI X plugin settings form
 
 ## Configuration
@@ -43,6 +46,18 @@ broadlink-rm-blaster <ip> <hexCode>
 ```
 
 Run `broadlink-rm-blaster --help` for usage details.
+
+To learn codes straight from a remote and add the resulting accessory to
+your config, run this in the Homebridge shell instead:
+
+```bash
+broadlink-rm-learner
+```
+
+Guided prompts walk you through picking an RM device and learning each
+signal for a Basic Accessory, TV, or Dimmer Light. Backs up `config.json` to
+`config.json.backup` once per session before writing anything. Run
+`broadlink-rm-learner --help` for usage details.
 
 ## Credits
 
