@@ -71,6 +71,22 @@ async function pickRmDevice(rmDevices: RmDeviceConfig[]): Promise<RmDeviceConfig
   return rmDevices[Number(choice) - 1];
 }
 
+// Connects (or confirms the cached connection) up front, so "press the
+// button now" prompts never appear before the RM is actually ready to
+// receive a learning command.
+async function connectToDevice(client: BroadlinkClient, ip: string): Promise<boolean> {
+  console.log(`\nConnecting to ${ip}...`);
+  try {
+    await client.connect(ip);
+    console.log('Connected.');
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.log(`Failed to connect: ${message}`);
+    return false;
+  }
+}
+
 async function askFrequency(): Promise<number> {
   for (;;) {
     const answer = (await readLine(`\nRF frequency in MHz (Enter for ${DEFAULT_RF_FREQUENCY_MHZ}): `)).trim();
@@ -176,6 +192,9 @@ async function learnBasicAccessory(
   pendingItems: PendingItem[],
 ): Promise<void> {
   const rmDevice = await pickRmDevice(rmDevices);
+  if (!(await connectToDevice(client, rmDevice.ip))) {
+    return;
+  }
   const name = await askNonEmpty('\nName for this accessory: ');
   const settings = await askSignalSettings();
 
@@ -211,6 +230,9 @@ async function learnTv(
   pendingItems: PendingItem[],
 ): Promise<void> {
   const rmDevice = await pickRmDevice(rmDevices);
+  if (!(await connectToDevice(client, rmDevice.ip))) {
+    return;
+  }
   const name = await askNonEmpty('\nName for this TV: ');
   const settings = await askSignalSettings();
 
@@ -275,6 +297,9 @@ async function learnDimmer(
   pendingItems: PendingItem[],
 ): Promise<void> {
   const rmDevice = await pickRmDevice(rmDevices);
+  if (!(await connectToDevice(client, rmDevice.ip))) {
+    return;
+  }
   const name = await askNonEmpty('\nName for this dimmer light: ');
   const settings = await askSignalSettings();
 

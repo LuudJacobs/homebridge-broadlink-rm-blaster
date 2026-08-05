@@ -24,11 +24,10 @@ declare module 'kiwicam-broadlinkjs-rm' {
     enterLearning(): void;
     checkData(): void;
     cancelLearn(): void;
-    // Public low-level send, used to build the known-frequency RF learning
-    // packet by hand (see buildFindRfPacket in broadlinkClient.ts) - the
-    // library's own RF learning helpers only support a blind frequency sweep,
-    // which didn't work reliably against real hardware.
-    request_header: Buffer;
+    // Public low-level send, used to send the known-frequency RF learning
+    // packet built by hand (see buildFindRfPacket in broadlinkClient.ts) -
+    // the library's own RF learning helpers only support a blind frequency
+    // sweep, which didn't work reliably against real hardware.
     sendPacket(command: number, payload: Buffer, debug?: boolean): Promise<void>;
     on(event: 'temperature', listener: (temperature: number, humidity: number) => void): this;
     on(event: 'rawData', listener: (data: Buffer) => void): this;
