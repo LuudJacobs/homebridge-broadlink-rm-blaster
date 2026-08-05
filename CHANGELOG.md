@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `config.json.backup` once per session before writing anything. RF codes
   are learned at a known frequency (defaults to 433.92 MHz, entered by hand)
   rather than an automatic sweep, which proved unreliable on real hardware.
-  Menu choices resolve on a single keypress, no Enter required.
+  Menu choices resolve on a single keypress, no Enter required. Connects to
+  the RM device before prompting to press any button, rather than after.
 
 ## [1.3.2] - 2026-08-04
 
