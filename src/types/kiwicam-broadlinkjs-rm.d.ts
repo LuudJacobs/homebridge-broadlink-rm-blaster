@@ -20,20 +20,21 @@ declare module 'kiwicam-broadlinkjs-rm' {
     sendData(data: Buffer, debug?: boolean): Promise<void>;
     authenticate(): void;
     checkTemperature(): void;
-    // Learning-mode methods - enterRFSweep/checkRFData/checkRFData2 are only
-    // actually present at runtime on RF-capable device types (added via the
-    // library's own addRFSupport()), which our MANUAL_RM_DEVICE_TYPE is.
+    // Learning-mode methods (IR - one-shot).
     enterLearning(): void;
     checkData(): void;
     cancelLearn(): void;
-    enterRFSweep(): void;
-    checkRFData(): void;
-    checkRFData2(): void;
+    // Public low-level send, used to build the known-frequency RF learning
+    // packet by hand (see buildFindRfPacket in broadlinkClient.ts) - the
+    // library's own RF learning helpers only support a blind frequency sweep,
+    // which didn't work reliably against real hardware.
+    request_header: Buffer;
+    sendPacket(command: number, payload: Buffer, debug?: boolean): Promise<void>;
     on(event: 'temperature', listener: (temperature: number, humidity: number) => void): this;
-    on(event: 'rawData' | 'rawRFData' | 'rawRFData2', listener: (data: Buffer) => void): this;
+    on(event: 'rawData', listener: (data: Buffer) => void): this;
     on(event: string, listener: (...args: unknown[]) => void): this;
     removeListener(event: 'temperature', listener: (temperature: number, humidity: number) => void): this;
-    removeListener(event: 'rawData' | 'rawRFData' | 'rawRFData2', listener: (data: Buffer) => void): this;
+    removeListener(event: 'rawData', listener: (data: Buffer) => void): this;
     removeListener(event: string, listener: (...args: unknown[]) => void): this;
   }
 
