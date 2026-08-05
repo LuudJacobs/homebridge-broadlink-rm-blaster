@@ -8,6 +8,8 @@ const MANUAL_RM_DEVICE_TYPE = 0x2227;
 const BROADLINK_PORT = 80;
 const AUTH_TIMEOUT_MS = 10_000;
 const READ_TIMEOUT_MS = 10_000;
+const LEARN_POLL_INTERVAL_MS = 1_000;
+const LEARN_TIMEOUT_MS = 20_000;
 
 export function parseHexCode(hexCode: string): Buffer {
   return Buffer.from(hexCode.replace(/\s+/g, ''), 'hex');
@@ -112,5 +114,90 @@ export class BroadlinkClient {
       device.on('temperature', onTemperature);
       device.checkTemperature();
     });
+  }
+
+  // Waits for one of `events` to fire, actively re-issuing `poll()` at a
+  // fixed interval in the meantime (this library never pushes learning data
+  // unprompted - it has to be asked again on a timer, same pattern as the
+  // Python reference project this CLI flow is modeled on). `signal` lets the
+  // caller cancel mid-wait (Ctrl-C / "press q to cancel" in the learner CLI).
+  private waitForEvent(
+    device: Device,
+    events: Array<'rawData' | 'rawRFData' | 'rawRFData2'>,
+    poll: () => void,
+    signal: AbortSignal,
+    timeoutMessage: string,
+  ): Promise<Buffer> {
+    return new Promise<Buffer>((resolve, reject) => {
+      if (signal.aborted) {
+        reject(new Error('Cancelled'));
+        return;
+      }
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        clearInterval(interval);
+        for (const event of events) {
+          device.removeListener(event, onData);
+        }
+        signal.removeEventListener('abort', onAbort);
+      };
+      const onData = (data: Buffer) => {
+        cleanup();
+        resolve(data);
+      };
+      const onAbort = () => {
+        cleanup();
+        reject(new Error('Cancelled'));
+      };
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error(timeoutMessage));
+      }, LEARN_TIMEOUT_MS);
+      const interval = setInterval(poll, LEARN_POLL_INTERVAL_MS);
+
+      for (const event of events) {
+        device.on(event, onData);
+      }
+      signal.addEventListener('abort', onAbort);
+    });
+  }
+
+  // One-shot: press the remote button any time after this is called.
+  async learnIrCode(ip: string, signal: AbortSignal): Promise<string> {
+    const device = await this.getDevice(ip);
+    device.enterLearning();
+    try {
+      const data = await this.waitForEvent(device, ['rawData'], () => device.checkData(), signal, 'Timed out waiting for a signal.');
+      return data.toString('hex');
+    } finally {
+      device.cancelLearn();
+    }
+  }
+
+  // Two-phase: hold the button during the frequency sweep (onPhase('sweep')),
+  // then press it again once the frequency locks (onPhase('capture')) to
+  // actually capture the code. Which of rawRFData/rawRFData2 the device
+  // reports frequency-lock through depends on the real hardware generation
+  // (RM4 Pro vs RM Pro), so both are accepted.
+  async learnRfCode(ip: string, signal: AbortSignal, onPhase: (phase: 'sweep' | 'capture') => void): Promise<string> {
+    const device = await this.getDevice(ip);
+    device.enterRFSweep();
+    onPhase('sweep');
+    await this.waitForEvent(
+      device,
+      ['rawRFData', 'rawRFData2'],
+      () => device.checkRFData(),
+      signal,
+      'Timed out waiting for the RF frequency to be detected.',
+    );
+
+    onPhase('capture');
+    try {
+      const data = await this.waitForEvent(device, ['rawData'], () => device.checkRFData2(), signal, 'Timed out waiting for a signal.');
+      return data.toString('hex');
+    } finally {
+      device.cancelLearn();
+    }
   }
 }
