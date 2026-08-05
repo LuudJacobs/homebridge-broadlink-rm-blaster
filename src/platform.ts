@@ -14,6 +14,7 @@ import { DEFAULT_MQTT_BASE_TOPIC, MqttPublisher } from './mqttPublisher';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
+import { AdvancedAccessory } from './accessories/advancedAccessory';
 import { DimmerAccessory } from './accessories/dimmerAccessory';
 import { TvAccessory } from './accessories/tvAccessory';
 import { TemperatureHumiditySensorAccessory } from './accessories/temperatureHumiditySensorAccessory';
@@ -81,6 +82,26 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       this.upsertAccessory(uuid, accessoryConfig.name, (accessory) => {
         accessory.context.accessoryConfig = accessoryConfig;
         new BasicAccessory(this, accessory, accessoryConfig, ip);
+      });
+    }
+
+    for (const advancedConfig of config.advancedAccessories ?? []) {
+      const ip = this.resolveRmDeviceIp(config, advancedConfig.rmDevice);
+      if (!ip) {
+        this.log.warn(
+          `Skipping advanced accessory "${advancedConfig.name}": no RM device named "${advancedConfig.rmDevice}" configured`,
+        );
+        continue;
+      }
+      if (advancedConfig.signals.length === 0) {
+        this.log.warn(`Skipping advanced accessory "${advancedConfig.name}": no signals configured`);
+        continue;
+      }
+
+      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:advanced:${advancedConfig.name}`);
+      this.upsertAccessory(uuid, advancedConfig.name, (accessory) => {
+        accessory.context.advancedConfig = advancedConfig;
+        new AdvancedAccessory(this, accessory, advancedConfig, ip);
       });
     }
 
