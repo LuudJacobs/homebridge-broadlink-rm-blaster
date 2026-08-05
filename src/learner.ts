@@ -302,12 +302,11 @@ async function learnDimmer(
   }
   const name = await askNonEmpty('\nName for this dimmer light: ');
   const settings = await askSignalSettings();
+  const steps = await askStepCount();
 
   const requiredSignals: Array<[string, string]> = [
     ['Power On', 'powerOnCode'],
     ['Power Off', 'powerOffCode'],
-    ['Brightness 0%', 'zeroPercentCode'],
-    ['Brightness 100%', 'hundredPercentCode'],
   ];
   const codes: Record<string, string> = {};
 
@@ -320,7 +319,13 @@ async function learnDimmer(
     codes[field] = result.hex;
   }
 
-  const steps = await askStepCount();
+  const zero = await learnRequiredSignal(client, rmDevice.ip, settings, 'Brightness 0%');
+  if (zero.status === 'cancelled') {
+    console.log('Cancelled - nothing saved for this dimmer light.');
+    return;
+  }
+  codes.zeroPercentCode = zero.hex;
+
   const levels: BrightnessLevelConfig[] = [];
   for (let i = 1; i < steps; i++) {
     const percent = Math.round((i * 100) / steps);
@@ -331,6 +336,13 @@ async function learnDimmer(
     }
     levels.push({ level: percent, code: result.hex });
   }
+
+  const hundred = await learnRequiredSignal(client, rmDevice.ip, settings, 'Brightness 100%');
+  if (hundred.status === 'cancelled') {
+    console.log('Cancelled - nothing saved for this dimmer light.');
+    return;
+  }
+  codes.hundredPercentCode = hundred.hex;
 
   const item: DimmerAccessoryConfig = {
     name,
