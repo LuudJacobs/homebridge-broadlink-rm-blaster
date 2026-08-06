@@ -27,6 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `broadlink-rm-learner`: new "Just show hex code" option that captures a
   single signal and prints it for copy/pasting, without saving anything.
 
+### Fixed
+- Fans: an extra on/off feature with no name took the whole accessory
+  down on startup, which could happen after editing a fan in the Config
+  UI left an empty row behind. Unusable features - nameless, duplicated,
+  or with no On signal - are now skipped with a warning naming the
+  problem.
+
 ### Changed
 - "Basic Accessories" renamed to "Simple On/Off Accessories" in the Config
   UI X form and the learner CLI.
