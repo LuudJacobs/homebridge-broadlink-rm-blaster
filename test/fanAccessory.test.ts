@@ -5,6 +5,7 @@ import {
   computeCyclePresses,
   computeStepPresses,
   levelForPercent,
+  parseFanCommand,
   percentForLevel,
   speedsAreAllOn,
 } from '../src/accessories/fanAccessory';
@@ -58,4 +59,37 @@ test('computeStepPresses steps directly in either direction without wrapping', (
   assert.deepEqual(computeStepPresses(0, 2), { direction: 'up', presses: 2 });
   assert.deepEqual(computeStepPresses(2, 0), { direction: 'down', presses: 2 });
   assert.deepEqual(computeStepPresses(1, 1), { direction: 'up', presses: 0 });
+});
+
+test('parseFanCommand reads the documented message', () => {
+  assert.deepEqual(parseFanCommand('{"state":"ON", "speed": 100, "swing": "ON"}'), {
+    state: 'on',
+    speedPercent: 100,
+    swing: true,
+  });
+});
+
+test('parseFanCommand only reports what the message actually carries', () => {
+  assert.deepEqual(parseFanCommand('{"state":"OFF"}'), { state: 'off' });
+  assert.deepEqual(parseFanCommand('{"speed":50}'), { speedPercent: 50 });
+  assert.deepEqual(parseFanCommand('{"swing":"off"}'), { swing: false });
+});
+
+test('parseFanCommand is lenient about case, booleans and numeric strings', () => {
+  assert.deepEqual(parseFanCommand('{"state":"on","swing":true,"speed":"25"}'), {
+    state: 'on',
+    speedPercent: 25,
+    swing: true,
+  });
+});
+
+test('parseFanCommand clamps a speed outside 0-100', () => {
+  assert.equal(parseFanCommand('{"speed":140}')?.speedPercent, 100);
+  assert.equal(parseFanCommand('{"speed":-5}')?.speedPercent, 0);
+});
+
+test('parseFanCommand rejects anything it cannot act on', () => {
+  for (const payload of ['', 'not json', '[]', 'null', '{}', '{"nonsense":1}', '{"state":"maybe"}']) {
+    assert.equal(parseFanCommand(payload), undefined, payload);
+  }
 });
