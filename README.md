@@ -55,6 +55,24 @@ and prints it for copy/pasting, without saving anything.
 
 Backs up `config.json` to `config.json.backup` once per session before writing anything.
 
+## Managing accessories
+
+To rename, remove, or reset an accessory, run this in the Homebridge shell:
+
+```bash
+broadlink-rm-manager
+```
+
+Reset clears an accessory's remembered state. This plugin never reads
+anything back from a device, so if a fan is used from its own remote what
+HomeKit shows can drift from what the device is actually doing. Resetting
+puts everything back to off/0 without sending any signals, so the two line
+up again.
+
+Stop Homebridge before using it: Homebridge rewrites its own accessory
+cache while running and would overwrite a reset. Changes are written when
+you quit, and `config.json` is backed up first.
+
 ## Debugging
 
 To send a single hex code straight to your RM, bypassing Homebridge/HomeKit entirely run this in the Homebridge shell:
