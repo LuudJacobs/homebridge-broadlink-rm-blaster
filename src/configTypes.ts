@@ -63,6 +63,7 @@ export interface FanAccessoryConfig {
   name: string;
   rmDevice: string;
   offCode: string;
+  onCode?: string;
   swingOnCode?: string;
   swingOffCode?: string;
   pressIntervalSeconds?: number;

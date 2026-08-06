@@ -117,12 +117,15 @@ async function askSignalSettings(): Promise<SignalSettings> {
   return { signalType: 'ir' };
 }
 
-async function runLearnLoop(
+// Press-and-capture only, with a retry offer on failure (e.g. a timeout) -
+// no "keep this value?" confirmation, so it's also reusable by a plain
+// capture-and-display flow that has no accessory to save it into.
+async function captureSignal(
   client: BroadlinkClient,
   ip: string,
   settings: SignalSettings,
   label: string,
-): Promise<LearnOutcome> {
+): Promise<{ status: 'captured'; hex: string } | { status: 'cancelled' }> {
   for (;;) {
     console.log(
       settings.signalType === 'rf'
@@ -145,15 +148,30 @@ async function runLearnLoop(
         return { status: 'cancelled' };
       }
       console.log(`Failed: ${message}`);
-      const retry = await readKey('Enter to retry, or "q" to cancel this accessory: ', ['', 'q']);
+      const retry = await readKey('Enter to retry, or "q" to cancel: ', ['', 'q']);
       if (retry === 'q') {
         return { status: 'cancelled' };
       }
       continue;
     }
     activeAbortController = null;
+    return { status: 'captured', hex };
+  }
+}
 
-    console.log(`Captured: ${hex}`);
+async function runLearnLoop(
+  client: BroadlinkClient,
+  ip: string,
+  settings: SignalSettings,
+  label: string,
+): Promise<LearnOutcome> {
+  for (;;) {
+    const captured = await captureSignal(client, ip, settings, label);
+    if (captured.status === 'cancelled') {
+      return { status: 'cancelled' };
+    }
+
+    console.log(`Captured: ${captured.hex}`);
     const confirm = await readKey('Enter to keep, "r" to retry, or "q" to cancel this accessory: ', ['', 'r', 'q']);
     if (confirm === 'r') {
       continue;
@@ -161,7 +179,7 @@ async function runLearnLoop(
     if (confirm === 'q') {
       return { status: 'cancelled' };
     }
-    return { status: 'learned', hex };
+    return { status: 'learned', hex: captured.hex };
   }
 }
 
@@ -478,6 +496,21 @@ async function learnFan(
     return;
   }
 
+  let onCode: string | undefined;
+  const onChoice = await readKey(
+    '\nDoes this fan turn on by pressing its speed/mode buttons, or is there a separate dedicated On button? ' +
+    '(Enter if the speed buttons turn it on, "s" if there\'s a separate On button): ',
+    ['', 's'],
+  );
+  if (onChoice === 's') {
+    const on = await learnRequiredSignal(client, rmDevice.ip, settings, 'On');
+    if (on.status === 'cancelled') {
+      console.log('Cancelled - nothing saved for this fan.');
+      return;
+    }
+    onCode = on.hex;
+  }
+
   let swingOnCode: string | undefined;
   let swingOffCode: string | undefined;
   const swingOn = await learnOptionalSignal(client, rmDevice.ip, settings, 'Swing On (skip if this fan has no swing function)');
@@ -574,6 +607,9 @@ async function learnFan(
     offCode: off.hex,
     modes,
   };
+  if (onCode) {
+    item.onCode = onCode;
+  }
   if (swingOnCode) {
     item.swingOnCode = swingOnCode;
   }
@@ -590,6 +626,25 @@ async function learnFan(
 
   pendingItems.push({ type: 'fans', item });
   console.log(`\n"${name}" queued to be saved.`);
+}
+
+// Doesn't save anything - just captures one signal and prints it for
+// copy/pasting elsewhere (e.g. a config field this walkthrough doesn't
+// cover yet).
+async function learnHexCode(client: BroadlinkClient, rmDevices: RmDeviceConfig[]): Promise<void> {
+  const rmDevice = await pickRmDevice(rmDevices);
+  if (!(await connectToDevice(client, rmDevice.ip))) {
+    return;
+  }
+  const settings = await askSignalSettings();
+
+  const captured = await captureSignal(client, rmDevice.ip, settings, 'Signal');
+  if (captured.status === 'cancelled') {
+    return;
+  }
+
+  console.log(`\n${captured.hex}\n`);
+  await readKey('Press Enter or "q" to return to the menu: ', ['', 'q']);
 }
 
 function printFallback(pendingItems: PendingItem[]): void {
@@ -677,24 +732,27 @@ async function main(): Promise<void> {
 
   for (;;) {
     console.log('\nWhat would you like to learn?');
-    console.log('  1. Basic Accessory (light/switch/outlet/fan)');
-    console.log('  2. TV');
-    console.log('  3. Dimmer Light');
-    console.log('  4. Advanced Accessory (multiple signals per press)');
-    console.log('  5. Fan (speeds, modes, swing)');
+    console.log('  1. Simple On/Off Accessory');
+    console.log('  2. Advanced Accessory (multiple signals per press)');
+    console.log('  3. Fan (speeds, modes, swing)');
+    console.log('  4. Dimmer Light');
+    console.log('  5. TV');
+    console.log('  6. Just show hex code');
     console.log('  q. Quit and save');
-    const choice = await readKey('Choice: ', ['1', '2', '3', '4', '5', 'q']);
+    const choice = await readKey('Choice: ', ['1', '2', '3', '4', '5', '6', 'q']);
 
     if (choice === '1') {
       await learnBasicAccessory(client, platform.rmDevices, pendingItems);
     } else if (choice === '2') {
-      await learnTv(client, platform.rmDevices, pendingItems);
-    } else if (choice === '3') {
-      await learnDimmer(client, platform.rmDevices, pendingItems);
-    } else if (choice === '4') {
       await learnAdvancedAccessory(client, platform.rmDevices, pendingItems);
-    } else if (choice === '5') {
+    } else if (choice === '3') {
       await learnFan(client, platform.rmDevices, pendingItems);
+    } else if (choice === '4') {
+      await learnDimmer(client, platform.rmDevices, pendingItems);
+    } else if (choice === '5') {
+      await learnTv(client, platform.rmDevices, pendingItems);
+    } else if (choice === '6') {
+      await learnHexCode(client, platform.rmDevices);
     } else {
       break;
     }

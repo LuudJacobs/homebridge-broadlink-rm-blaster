@@ -140,8 +140,18 @@ export class FanAccessory {
 
     const mode = this.config.modes[modeIndex];
     const intervalMs = (this.config.pressIntervalSeconds ?? DEFAULT_PRESS_INTERVAL_SECONDS) * 1000;
+    const wasOff = this.accessory.context.activeModeIndex === undefined;
 
     try {
+      // Some fans (unlike this plugin's original assumption) have a
+      // dedicated power button that's entirely separate from every mode's
+      // enter/cycle signal - pressing a mode button alone won't turn the
+      // fan on. Only relevant on the off->on transition; once on, mode
+      // switches go through their own enterCode as before.
+      if (wasOff && this.config.onCode) {
+        await this.platform.broadlinkClient.sendCode(this.ip, this.config.onCode);
+        await sleep(intervalMs);
+      }
       await this.platform.broadlinkClient.sendCode(this.ip, mode.enterCode);
       if (mode.additionalEnterCode) {
         const repeatCount = mode.additionalEnterRepeatCount ?? 1;
@@ -149,6 +159,14 @@ export class FanAccessory {
           await sleep(intervalMs);
           await this.platform.broadlinkClient.sendCode(this.ip, mode.additionalEnterCode);
         }
+      }
+      // Many remote fans forget their oscillation state whenever they're
+      // power-cycled, even though our own Swing switch still (correctly,
+      // from the user's perspective) shows it as on - reassert it here so
+      // the physical fan actually matches what the switch already says.
+      if (wasOff && this.accessory.context.swingOn && this.config.swingOnCode) {
+        await sleep(intervalMs);
+        await this.platform.broadlinkClient.sendCode(this.ip, this.config.swingOnCode);
       }
       this.accessory.context.activeModeIndex = modeIndex;
       this.accessory.context.assumedLevel = 1;
