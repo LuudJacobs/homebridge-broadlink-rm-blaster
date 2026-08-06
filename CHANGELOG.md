@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.5.0] - 2026-08-06
+
+### Added
+- Advanced Accessories: a new standalone accessory type where one button
+  press sends multiple signals in sequence, with a configurable timeout
+  between them. An optional Off signal gives it real on/off state (a
+  normal Switch); without one, it's an auto-resetting momentary trigger
+  instead. `broadlink-rm-learner` can learn these too.
+
 ## [1.4.0] - 2026-08-05
 
 ### Added
