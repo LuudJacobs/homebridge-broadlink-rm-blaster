@@ -69,9 +69,9 @@ HomeKit shows can drift from what the device is actually doing. Resetting
 puts everything back to off/0 without sending any signals, so the two line
 up again.
 
-Stop Homebridge before using it: Homebridge rewrites its own accessory
-cache while running and would overwrite a reset. Changes are written when
-you quit, and `config.json` is backed up first.
+Safe to run while Homebridge is running. Like renames and removals, a
+reset takes effect the next time Homebridge starts. Changes are written
+when you quit, and `config.json` is backed up first.
 
 ## Debugging
 

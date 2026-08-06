@@ -6,6 +6,7 @@ import * as path from 'path';
 import { backupConfig, findConfigPath, findPlatformBlock, writeConfigAtomically } from './configFile';
 import type { HomebridgeConfigFile } from './configFile';
 import { accessoryUuidSeed, DEVICE_KINDS, generateUuid } from './deviceKinds';
+import { queueResets } from './stateReset';
 import { PLATFORM_NAME } from './settings';
 import { initTerminal, readKey, readLine, setSigintHandler } from './terminal';
 
@@ -25,8 +26,8 @@ Changes are only written when you quit with "q". A backup is made once per
 session, before anything is written, saved alongside your config as
 config.json.backup.
 
-Homebridge should be stopped while you use this: it rewrites its own
-accessory cache as it runs, and would overwrite a reset.
+Safe to run while Homebridge is running - like renames and removals, a
+reset is applied the next time Homebridge starts.
 
 Options:
   --config <path>   Path to config.json (defaults to ./config.json)
@@ -39,17 +40,6 @@ interface ManagedDevice {
   name: string;
   uuid: string;
   entry: Record<string, unknown>;
-}
-
-interface CachedAccessory {
-  UUID?: string;
-  displayName?: string;
-  context?: Record<string, unknown>;
-}
-
-// Homebridge keeps its accessory cache next to config.json.
-function cachedAccessoriesPath(configPath: string): string {
-  return path.join(path.dirname(configPath), 'accessories', 'cachedAccessories');
 }
 
 function collectDevices(platform: Record<string, unknown>): ManagedDevice[] {
@@ -186,49 +176,21 @@ async function manageDevice(
   }
 }
 
-// Wipes the remembered state of the given accessories in Homebridge's own
-// cache. Everything the plugin tracks lives in each accessory's context,
-// and it rebuilds the config side of that on startup, so emptying it is
-// the whole reset.
+// Queues a reset for the plugin to apply on its next start. Homebridge
+// holds every accessory in memory and rewrites its own cache as it runs,
+// so clearing that cache from here would be undone - and this is normally
+// run from the Homebridge UI's terminal, with Homebridge up.
 function applyResets(configPath: string, uuids: Set<string>): void {
   if (uuids.size === 0) {
     return;
   }
-  const cachePath = cachedAccessoriesPath(configPath);
-  if (!fs.existsSync(cachePath)) {
-    console.log(`\nNo accessory cache at ${cachePath} - nothing to reset (state is already empty).`);
-    return;
-  }
-
-  let cached: CachedAccessory[];
+  const storageDir = path.dirname(configPath);
   try {
-    cached = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+    const queuePath = queueResets(storageDir, [...uuids]);
+    console.log(`\nQueued ${uuids.size} reset(s) in ${queuePath}.`);
   } catch (error) {
-    console.error(`\nCould not read ${cachePath}: ${(error as Error).message} - skipping the reset.`);
-    return;
+    console.error(`\nCould not queue the reset(s): ${(error as Error).message}`);
   }
-  if (!Array.isArray(cached)) {
-    console.error(`\n${cachePath} isn't in the expected format - skipping the reset.`);
-    return;
-  }
-
-  let reset = 0;
-  for (const accessory of cached) {
-    if (accessory.UUID && uuids.has(accessory.UUID)) {
-      accessory.context = {};
-      reset += 1;
-    }
-  }
-
-  if (reset === 0) {
-    console.log('\nNothing matching was in the accessory cache - that state is already clear.');
-    return;
-  }
-
-  const tempPath = path.join(path.dirname(cachePath), '.cachedAccessories.tmp');
-  fs.writeFileSync(tempPath, JSON.stringify(cached, null, 2));
-  fs.renameSync(tempPath, cachePath);
-  console.log(`\nReset ${reset} accessor${reset === 1 ? 'y' : 'ies'} in ${cachePath}.`);
 }
 
 function finishAndExit(
@@ -277,7 +239,6 @@ async function main(): Promise<void> {
 
   backupConfig(configPath);
   console.log(`Backed up config.json to ${configPath}.backup`);
-  console.log('Homebridge should be stopped while you use this, so a reset is not overwritten.');
 
   const platformRecord = platform as unknown as Record<string, unknown>;
   const pendingResets = new Set<string>();
