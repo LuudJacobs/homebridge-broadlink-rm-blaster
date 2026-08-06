@@ -13,6 +13,7 @@ import { NtfyNotifier } from './ntfyNotifier';
 import { DEFAULT_MQTT_BASE_TOPIC, MqttPublisher } from './mqttPublisher';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { accessoryUuidSeed } from './deviceKinds';
+import { consumeResets } from './stateReset';
 import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
 import { AdvancedAccessory } from './accessories/advancedAccessory';
@@ -70,6 +71,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
   private discoverAccessories(): void {
     const config = this.config as BlasterPlatformConfig;
     this.activeUuids.clear();
+    this.applyQueuedStateResets();
 
     for (const accessoryConfig of config.accessories ?? []) {
       const ip = this.resolveRmDeviceIp(config, accessoryConfig.rmDevice);
@@ -165,6 +167,27 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     }
 
     this.pruneStaleAccessories();
+  }
+
+  // Clears the remembered state of any accessory broadlink-rm-manager
+  // queued for a reset. Runs before any accessory is constructed, since
+  // that is when the context is read back.
+  private applyQueuedStateResets(): void {
+    let uuids: string[];
+    try {
+      uuids = consumeResets(this.api.user.storagePath());
+    } catch (error) {
+      this.log.warn(`Could not read queued state resets: ${(error as Error).message}`);
+      return;
+    }
+
+    for (const uuid of uuids) {
+      const accessory = this.accessories.find((candidate) => candidate.UUID === uuid);
+      if (accessory) {
+        accessory.context = {};
+        this.log.info(`Reset remembered state for accessory: ${accessory.displayName}`);
+      }
+    }
   }
 
   // Every accessory now references its RM by name (rmDevice) instead of an
