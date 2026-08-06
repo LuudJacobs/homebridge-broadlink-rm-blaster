@@ -80,8 +80,21 @@ export class FanAccessory {
       return 0;
     }
     const mode = this.config.modes[modeIndex];
-    const level = this.accessory.context.assumedLevel ?? 1;
-    return percentForLevel(level, mode.levelCount);
+    return percentForLevel(this.getAssumedLevel(modeIndex), mode.levelCount);
+  }
+
+  // Tracked per mode (not one flat value) since a mode that resumes its own
+  // last-used level needs its assumed level preserved across a mode switch
+  // and a power cycle, while a mode that always starts at level 1 doesn't.
+  private getAssumedLevel(modeIndex: number): number {
+    const levels = this.accessory.context.modeLevels as Record<number, number> | undefined;
+    return levels?.[modeIndex] ?? 1;
+  }
+
+  private setAssumedLevel(modeIndex: number, level: number): void {
+    const levels = (this.accessory.context.modeLevels ?? {}) as Record<number, number>;
+    levels[modeIndex] = level;
+    this.accessory.context.modeLevels = levels;
   }
 
   private getSwingMode(): CharacteristicValue {
@@ -160,16 +173,23 @@ export class FanAccessory {
           await this.platform.broadlinkClient.sendCode(this.ip, mode.additionalEnterCode);
         }
       }
-      // Many remote fans forget their oscillation state whenever they're
+      // Most remote fans forget their oscillation state whenever they're
       // power-cycled, even though our own Swing switch still (correctly,
       // from the user's perspective) shows it as on - reassert it here so
       // the physical fan actually matches what the switch already says.
-      if (wasOff && this.accessory.context.swingOn && this.config.swingOnCode) {
+      // Skipped for fans confirmed to remember it themselves, since
+      // resending a toggle-style code in that case would just flip it off.
+      if (wasOff && !this.config.swingRemembersState && this.accessory.context.swingOn && this.config.swingOnCode) {
         await sleep(intervalMs);
         await this.platform.broadlinkClient.sendCode(this.ip, this.config.swingOnCode);
       }
       this.accessory.context.activeModeIndex = modeIndex;
-      this.accessory.context.assumedLevel = 1;
+      // A mode that resumes its own last-used level keeps whatever we last
+      // tracked for it (our best guess for what the device actually
+      // resumed to) instead of being forced back to 1 on every entry.
+      if (!mode.resumesLastLevel) {
+        this.setAssumedLevel(modeIndex, 1);
+      }
       this.platform.log.info(`Entered mode "${mode.name}" on ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
@@ -178,7 +198,10 @@ export class FanAccessory {
     }
 
     this.fanService.updateCharacteristic(this.platform.Characteristic.Active, this.platform.Characteristic.Active.ACTIVE);
-    this.fanService.updateCharacteristic(this.platform.Characteristic.RotationSpeed, percentForLevel(1, mode.levelCount));
+    this.fanService.updateCharacteristic(
+      this.platform.Characteristic.RotationSpeed,
+      percentForLevel(this.getAssumedLevel(modeIndex), mode.levelCount),
+    );
   }
 
   private async setRotationSpeed(value: CharacteristicValue): Promise<void> {
@@ -189,7 +212,7 @@ export class FanAccessory {
 
     const mode = this.config.modes[modeIndex];
     const targetLevel = levelForPercent(Number(value), mode.levelCount);
-    const currentLevel = this.accessory.context.assumedLevel ?? 1;
+    const currentLevel = this.getAssumedLevel(modeIndex);
     const presses = computeCyclePresses(currentLevel, targetLevel, mode.levelCount);
     if (presses === 0) {
       return;
@@ -205,7 +228,7 @@ export class FanAccessory {
           await sleep(intervalMs);
         }
       }
-      this.accessory.context.assumedLevel = targetLevel;
+      this.setAssumedLevel(modeIndex, targetLevel);
       this.platform.log.info(`Set "${mode.name}" to level ${targetLevel} on ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);

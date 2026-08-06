@@ -238,6 +238,13 @@
               "type": "string",
               "required": false
             },
+            "swingRemembersState": {
+              "title": "Fan Remembers Oscillation State",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Enable if the fan keeps its last oscillation state across power cycles on its own. Leave off if it always comes back with oscillation off after being turned off."
+            },
             "pressIntervalSeconds": {
               "title": "Press Interval (seconds)",
               "type": "number",
@@ -275,6 +282,13 @@
                     "type": "integer",
                     "minimum": 1,
                     "required": true
+                  },
+                  "resumesLastLevel": {
+                    "title": "Resumes Last-Used Level",
+                    "type": "boolean",
+                    "default": false,
+                    "required": false,
+                    "description": "Enable if re-entering this mode resumes whatever level was last used, instead of always starting at level 1."
                   },
                   "additionalEnterCode": {
                     "title": "Additional Signal on Entry",
@@ -586,6 +600,7 @@
         "fans[].onCode",
         "fans[].swingOnCode",
         "fans[].swingOffCode",
+        "fans[].swingRemembersState",
         "fans[].pressIntervalSeconds",
         {
           "type": "array",
@@ -598,6 +613,7 @@
             "fans[].modes[].enterCode",
             "fans[].modes[].cycleCode",
             "fans[].modes[].levelCount",
+            "fans[].modes[].resumesLastLevel",
             "fans[].modes[].additionalEnterCode",
             "fans[].modes[].additionalEnterRepeatCount"
           ]
