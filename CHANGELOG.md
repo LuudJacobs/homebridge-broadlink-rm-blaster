@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- Fans: a new standalone accessory type (`Service.Fanv2`) with speed
+  control, optional swing, and optional named modes (e.g. Heat/Fan) each
+  with their own speed levels - a bonus mode-select switch per mode when
+  there's more than one. `broadlink-rm-learner` can learn these too.
+
 ## [1.5.0] - 2026-08-06
 
 ### Added

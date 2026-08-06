@@ -14,6 +14,8 @@ import type {
   BasicAccessoryConfig,
   BrightnessLevelConfig,
   DimmerAccessoryConfig,
+  FanAccessoryConfig,
+  FanModeConfig,
   RmDeviceConfig,
   TvAccessoryConfig,
 } from './configTypes';
@@ -51,7 +53,8 @@ type PendingItem =
   | { type: 'accessories'; item: BasicAccessoryConfig }
   | { type: 'advancedAccessories'; item: AdvancedAccessoryConfig }
   | { type: 'tvs'; item: TvAccessoryConfig }
-  | { type: 'dimmers'; item: DimmerAccessoryConfig };
+  | { type: 'dimmers'; item: DimmerAccessoryConfig }
+  | { type: 'fans'; item: FanAccessoryConfig };
 
 // Set only for the duration of an in-flight learnIrCode/learnRfCode call, so
 // Ctrl-C can abort it cleanly instead of the process just dying mid-learn.
@@ -432,6 +435,163 @@ async function learnDimmer(
   console.log(`\n"${name}" queued to be saved.`);
 }
 
+async function askLevelCount(modeName: string): Promise<number> {
+  for (;;) {
+    const answer = (await readLine(`\nHow many levels/speeds does "${modeName}" cycle through? Minimum 1: `)).trim();
+    const count = Number(answer);
+    if (Number.isInteger(count) && count >= 1) {
+      return count;
+    }
+    console.log('Enter a whole number of 1 or more.');
+  }
+}
+
+async function askRepeatCount(): Promise<number> {
+  for (;;) {
+    const answer = (await readLine('\nHow many times should it be sent (Enter for 1)? ')).trim();
+    if (!answer) {
+      return 1;
+    }
+    const count = Number(answer);
+    if (Number.isInteger(count) && count >= 1) {
+      return count;
+    }
+    console.log('Enter a whole number of 1 or more.');
+  }
+}
+
+async function learnFan(
+  client: BroadlinkClient,
+  rmDevices: RmDeviceConfig[],
+  pendingItems: PendingItem[],
+): Promise<void> {
+  const rmDevice = await pickRmDevice(rmDevices);
+  if (!(await connectToDevice(client, rmDevice.ip))) {
+    return;
+  }
+  const name = await askNonEmpty('\nName for this fan: ');
+  const settings = await askSignalSettings();
+
+  const off = await learnRequiredSignal(client, rmDevice.ip, settings, 'Off');
+  if (off.status === 'cancelled') {
+    console.log('Cancelled - nothing saved for this fan.');
+    return;
+  }
+
+  let swingOnCode: string | undefined;
+  let swingOffCode: string | undefined;
+  const swingOn = await learnOptionalSignal(client, rmDevice.ip, settings, 'Swing On (skip if this fan has no swing function)');
+  if (swingOn.status === 'cancelled') {
+    console.log('Cancelled - nothing saved for this fan.');
+    return;
+  }
+  if (swingOn.status === 'learned') {
+    swingOnCode = swingOn.hex;
+    const swingOff = await learnOptionalSignal(client, rmDevice.ip, settings, 'Swing Off (skip if pressing Swing On again just toggles it)');
+    if (swingOff.status === 'cancelled') {
+      console.log('Cancelled - nothing saved for this fan.');
+      return;
+    }
+    if (swingOff.status === 'learned') {
+      swingOffCode = swingOff.hex;
+    }
+  }
+
+  const modes: FanModeConfig[] = [];
+  for (;;) {
+    const modeName = await askNonEmpty(`\nName for mode ${modes.length + 1} (e.g. Speed, Heat, Fan): `);
+
+    const enter = await learnRequiredSignal(client, rmDevice.ip, settings, `Enter ${modeName}`);
+    if (enter.status === 'cancelled') {
+      console.log('Cancelled - nothing saved for this fan.');
+      return;
+    }
+
+    const cycleChoice = await readKey(
+      `\nDoes pressing "Enter ${modeName}" again advance to the next level, or is there a separate signal for that? ` +
+      '(Enter if it\'s the same signal, "s" if there\'s a separate one): ',
+      ['', 's'],
+    );
+    let cycleCode: string | undefined;
+    if (cycleChoice === 's') {
+      const cycle = await learnRequiredSignal(client, rmDevice.ip, settings, `Cycle ${modeName}`);
+      if (cycle.status === 'cancelled') {
+        console.log('Cancelled - nothing saved for this fan.');
+        return;
+      }
+      cycleCode = cycle.hex;
+    }
+
+    const levelCount = await askLevelCount(modeName);
+
+    let additionalEnterCode: string | undefined;
+    let additionalEnterRepeatCount: number | undefined;
+    const additional = await learnOptionalSignal(
+      client,
+      rmDevice.ip,
+      settings,
+      `Extra signal to send automatically every time "${modeName}" is freshly entered (e.g. maxing out a target temperature) - skip if none`,
+    );
+    if (additional.status === 'cancelled') {
+      console.log('Cancelled - nothing saved for this fan.');
+      return;
+    }
+    if (additional.status === 'learned') {
+      additionalEnterCode = additional.hex;
+      additionalEnterRepeatCount = await askRepeatCount();
+    }
+
+    const mode: FanModeConfig = {
+      name: modeName,
+      enterCode: enter.hex,
+      levelCount,
+    };
+    if (cycleCode) {
+      mode.cycleCode = cycleCode;
+    }
+    if (additionalEnterCode) {
+      mode.additionalEnterCode = additionalEnterCode;
+      mode.additionalEnterRepeatCount = additionalEnterRepeatCount;
+    }
+    modes.push(mode);
+
+    const choice = await readKey(
+      `\n${modes.length} mode(s) added. Enter to add another, "d" when done, or "q" to cancel: `,
+      ['', 'd', 'q'],
+    );
+    if (choice === 'q') {
+      console.log('Cancelled - nothing saved for this fan.');
+      return;
+    }
+    if (choice === 'd') {
+      break;
+    }
+  }
+
+  const item: FanAccessoryConfig = {
+    name,
+    rmDevice: rmDevice.name,
+    offCode: off.hex,
+    modes,
+  };
+  if (swingOnCode) {
+    item.swingOnCode = swingOnCode;
+  }
+  if (swingOffCode) {
+    item.swingOffCode = swingOffCode;
+  }
+
+  const needsInterval = modes.length > 1
+    || modes.some((mode) => mode.levelCount > 1)
+    || modes.some((mode) => (mode.additionalEnterRepeatCount ?? 0) > 1);
+  if (needsInterval) {
+    item.pressIntervalSeconds = await askTimeoutSeconds();
+  }
+
+  pendingItems.push({ type: 'fans', item });
+  console.log(`\n"${name}" queued to be saved.`);
+}
+
 function printFallback(pendingItems: PendingItem[]): void {
   console.error('\nHere is what would have been added - add it manually if needed:');
   console.error(JSON.stringify(pendingItems.map((pending) => pending.item), null, 2));
@@ -521,8 +681,9 @@ async function main(): Promise<void> {
     console.log('  2. TV');
     console.log('  3. Dimmer Light');
     console.log('  4. Advanced Accessory (multiple signals per press)');
+    console.log('  5. Fan (speeds, modes, swing)');
     console.log('  q. Quit and save');
-    const choice = await readKey('Choice: ', ['1', '2', '3', '4', 'q']);
+    const choice = await readKey('Choice: ', ['1', '2', '3', '4', '5', 'q']);
 
     if (choice === '1') {
       await learnBasicAccessory(client, platform.rmDevices, pendingItems);
@@ -532,6 +693,8 @@ async function main(): Promise<void> {
       await learnDimmer(client, platform.rmDevices, pendingItems);
     } else if (choice === '4') {
       await learnAdvancedAccessory(client, platform.rmDevices, pendingItems);
+    } else if (choice === '5') {
+      await learnFan(client, platform.rmDevices, pendingItems);
     } else {
       break;
     }

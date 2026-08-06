@@ -201,6 +201,95 @@
           }
         }
       },
+      "fans": {
+        "title": "Fans",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true
+            },
+            "rmDevice": {
+              "title": "RM Device",
+              "type": "string",
+              "required": true,
+              "description": "Must match the name of one of the configured RM devices exactly."
+            },
+            "offCode": {
+              "title": "Off Signal",
+              "type": "string",
+              "required": true
+            },
+            "swingOnCode": {
+              "title": "Swing Signal",
+              "type": "string",
+              "required": false
+            },
+            "swingOffCode": {
+              "title": "Swing Off Signal (leave empty if the Swing Signal is a toggle)",
+              "type": "string",
+              "required": false
+            },
+            "pressIntervalSeconds": {
+              "title": "Press Interval (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "default": 0.5,
+              "required": false,
+              "description": "Delay between repeated presses when cycling speed or sending an extra signal on mode entry."
+            },
+            "modes": {
+              "title": "Modes",
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "required": true,
+                    "description": "E.g. \"Speed\" for a simple fan, or \"Heat\"/\"Fan\" for a fan with separate modes."
+                  },
+                  "enterCode": {
+                    "title": "Enter Signal",
+                    "type": "string",
+                    "required": true,
+                    "description": "Press to switch into this mode."
+                  },
+                  "cycleCode": {
+                    "title": "Cycle Signal (leave empty if the Enter Signal also cycles speed when already in this mode)",
+                    "type": "string",
+                    "required": false
+                  },
+                  "levelCount": {
+                    "title": "Number of Levels",
+                    "type": "integer",
+                    "minimum": 1,
+                    "required": true
+                  },
+                  "additionalEnterCode": {
+                    "title": "Additional Signal on Entry",
+                    "type": "string",
+                    "required": false,
+                    "description": "Optional signal sent automatically right after the Enter Signal, every time this mode is freshly entered (e.g. maxing out a target temperature)."
+                  },
+                  "additionalEnterRepeatCount": {
+                    "title": "Additional Signal Repeat Count",
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1,
+                    "required": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "dimmers": {
         "title": "Dimmer Lights",
         "type": "array",
@@ -471,6 +560,40 @@
           "expanded": false,
           "items": [
             "advancedAccessories[].signals[].code"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "help",
+      "helpvalue": "<div style=\"height: 1.5rem\"></div>"
+    },
+    {
+      "type": "array",
+      "key": "fans",
+      "title": "Fans",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "fans[].name",
+        "fans[].rmDevice",
+        "fans[].offCode",
+        "fans[].swingOnCode",
+        "fans[].swingOffCode",
+        "fans[].pressIntervalSeconds",
+        {
+          "type": "array",
+          "key": "fans[].modes",
+          "title": "Modes",
+          "expandable": true,
+          "expanded": false,
+          "items": [
+            "fans[].modes[].name",
+            "fans[].modes[].enterCode",
+            "fans[].modes[].cycleCode",
+            "fans[].modes[].levelCount",
+            "fans[].modes[].additionalEnterCode",
+            "fans[].modes[].additionalEnterRepeatCount"
           ]
         }
       ]

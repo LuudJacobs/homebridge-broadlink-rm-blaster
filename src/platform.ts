@@ -16,6 +16,7 @@ import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
 import { AdvancedAccessory } from './accessories/advancedAccessory';
 import { DimmerAccessory } from './accessories/dimmerAccessory';
+import { FanAccessory } from './accessories/fanAccessory';
 import { TvAccessory } from './accessories/tvAccessory';
 import { TemperatureHumiditySensorAccessory } from './accessories/temperatureHumiditySensorAccessory';
 
@@ -102,6 +103,24 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       this.upsertAccessory(uuid, advancedConfig.name, (accessory) => {
         accessory.context.advancedConfig = advancedConfig;
         new AdvancedAccessory(this, accessory, advancedConfig, ip);
+      });
+    }
+
+    for (const fanConfig of config.fans ?? []) {
+      const ip = this.resolveRmDeviceIp(config, fanConfig.rmDevice);
+      if (!ip) {
+        this.log.warn(`Skipping fan "${fanConfig.name}": no RM device named "${fanConfig.rmDevice}" configured`);
+        continue;
+      }
+      if (fanConfig.modes.length === 0) {
+        this.log.warn(`Skipping fan "${fanConfig.name}": no modes configured`);
+        continue;
+      }
+
+      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:fan:${fanConfig.name}`);
+      this.upsertAccessory(uuid, fanConfig.name, (accessory) => {
+        accessory.context.fanConfig = fanConfig;
+        new FanAccessory(this, accessory, fanConfig, ip);
       });
     }
 
