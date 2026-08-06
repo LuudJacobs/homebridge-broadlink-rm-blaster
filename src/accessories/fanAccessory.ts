@@ -5,6 +5,13 @@ import type { FanAccessoryConfig, FanModeConfig } from '../configTypes';
 
 const DEFAULT_PRESS_INTERVAL_SECONDS = 0.5;
 
+// Long enough that HomeKit's own optimistic UI doesn't ignore the update
+// that puts a momentary switch back to off.
+const RESYNC_RESET_DELAY_MS = 1000;
+
+// Kept distinct from a feature's subtype, which is just its name.
+const RESYNC_SUBTYPE = '__resync';
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -102,6 +109,10 @@ export class FanAccessory {
       this.setUpModeService(mode);
     }
 
+    if (this.config.resyncSwitch) {
+      this.setUpResyncService();
+    }
+
     const modeNames = (this.config.modes ?? []).map((mode) => mode.name);
     this.platform.log.info(
       `Fan "${this.config.name}": ${this.speedCount} speed(s), swing ${this.config.swingCode ? 'yes' : 'no'}`
@@ -125,6 +136,46 @@ export class FanAccessory {
     service.getCharacteristic(this.platform.Characteristic.On)
       .onGet(() => this.isModeOn(mode))
       .onSet((value) => this.setModeOn(mode, !!value));
+  }
+
+  // A momentary switch that forgets everything the plugin assumes about
+  // this fan, without sending a single signal. Nothing here is ever read
+  // back from the device, so using the fan's own remote leaves HomeKit
+  // out of step - turn the fan off by hand, tap this, and the two agree
+  // again.
+  private setUpResyncService(): void {
+    const label = `${this.config.name} Resync`;
+    const service = this.accessory.getServiceById(this.platform.Service.Switch, RESYNC_SUBTYPE)
+      ?? this.accessory.addService(this.platform.Service.Switch, label, RESYNC_SUBTYPE);
+    service.setCharacteristic(this.platform.Characteristic.Name, label);
+    if (!service.testCharacteristic(this.platform.Characteristic.ConfiguredName)) {
+      service.addCharacteristic(this.platform.Characteristic.ConfiguredName);
+    }
+    service.setCharacteristic(this.platform.Characteristic.ConfiguredName, label);
+
+    service.getCharacteristic(this.platform.Characteristic.On)
+      .onGet(() => false)
+      .onSet((value) => {
+        if (!value) {
+          return;
+        }
+        this.resyncState();
+        // Fire and forget - awaiting this inline would land the update
+        // too early for HomeKit to act on it.
+        setTimeout(() => {
+          service.updateCharacteristic(this.platform.Characteristic.On, false);
+        }, RESYNC_RESET_DELAY_MS);
+      });
+  }
+
+  private resyncState(): void {
+    this.accessory.context.on = false;
+    this.accessory.context.speedLevel = 0;
+    this.accessory.context.speedEntered = false;
+    this.accessory.context.swingOn = false;
+    this.accessory.context.modes = {};
+    this.platform.log.info(`Resynced ${this.config.name} - assuming it is off, with everything cleared.`);
+    this.pushState();
   }
 
   // ---------------------------------------------------------------------

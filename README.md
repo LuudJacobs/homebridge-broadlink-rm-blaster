@@ -26,7 +26,7 @@ hb-service add homebridge-broadlink-rm-blaster
 - **Simple on/off accessories** power on/off
 - **Advanced accessories** one press sends multiple signals in sequence, with a configurable timeout between them
 - **Dimmer lights** one signal per discrete brightness level
-- **Fans** speed control, optional swing, and any number of extra on/off features (e.g. cooling) as switches
+- **Fans** speed control, optional swing, extra on/off features (e.g. cooling), and an optional resync switch
 - **TVs** power on/off plus a usable remote in the iOS Remote app
 - **Temperature/humidity sensor** optionally expose sensor data
 - **ntfy.sh notifications** push notification when a RM fails to connect
@@ -54,24 +54,6 @@ There's also a "just show hex code" option that captures a single signal
 and prints it for copy/pasting, without saving anything.
 
 Backs up `config.json` to `config.json.backup` once per session before writing anything.
-
-## Managing accessories
-
-To rename, remove, or reset an accessory, run this in the Homebridge shell:
-
-```bash
-broadlink-rm-manager
-```
-
-Reset clears an accessory's remembered state. This plugin never reads
-anything back from a device, so if a fan is used from its own remote what
-HomeKit shows can drift from what the device is actually doing. Resetting
-puts everything back to off/0 without sending any signals, so the two line
-up again.
-
-Safe to run while Homebridge is running. Like renames and removals, a
-reset takes effect the next time Homebridge starts. Changes are written
-when you quit, and `config.json` is backed up first.
 
 ## Debugging
 
