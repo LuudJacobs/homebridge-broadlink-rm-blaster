@@ -9,11 +9,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Whether every one of a mode's levels is a running level, rather than
+// level 0 meaning the mode is off. A mode that powers the fan on as you
+// step it up, but doesn't power it off at its lowest level, cannot have
+// "off" inside its own cycle - that's a fan whose speed button runs
+// 1 -> 2 -> 3 -> 1 with a separate off button.
+export function modeLevelsAreAllOn(mode: FanModeConfig): boolean {
+  return !!mode.powersOn && !mode.powersOff;
+}
+
 // Ordinary modes treat level 0 as off, so it sits at 0% and the top level
-// at 100%. Exclusive modes are different: every one of their levels is a
-// running level (a heater on H1 is still heating), and they stop only when
-// another exclusive mode takes over - so their lowest level has to sit
-// above 0%.
+// at 100%. Modes with no off level of their own spread across the slider
+// with their lowest level above 0%.
 export function percentForLevel(level: number, levelCount: number, allLevelsOn = false): number {
   if (allLevelsOn) {
     return Math.round(((level + 1) * 100) / Math.max(levelCount, 1));
@@ -51,34 +58,6 @@ export function computeStepPresses(
   return { direction: delta >= 0 ? 'up' : 'down', presses: Math.abs(delta) };
 }
 
-// Returning to a displaced exclusive mode costs one press to get back into
-// it at all. That press lands either on the level it was left at, or one
-// past it on a fan whose mode button also advances a level as it switches
-// (H1 -> fan -> H2 -> fan -> H1 ...).
-export function computeReturnLevel(storedLevel: number, levelCount: number, remembersOnReturn: boolean): number {
-  return remembersOnReturn ? storedLevel : (storedLevel + 1) % levelCount;
-}
-
-export function computeActivationPresses(
-  storedLevel: number,
-  targetLevel: number,
-  levelCount: number,
-  remembersOnReturn: boolean,
-): number {
-  const landing = computeReturnLevel(storedLevel, levelCount, remembersOnReturn);
-  return 1 + computeCyclePresses(landing, targetLevel, levelCount);
-}
-
-// Whether every one of a mode's levels is a running level, rather than
-// level 0 meaning the mode is off. True for exclusive modes (a heater on
-// its lowest setting is still heating), and inferred for the rest: a mode
-// that powers the fan on as you step it up, but doesn't power it off at
-// its lowest level, cannot have "off" inside its own cycle - that's a fan
-// whose speed button runs 1 -> 2 -> 3 -> 1 with a separate off button.
-export function modeLevelsAreAllOn(mode: FanModeConfig): boolean {
-  return !!mode.exclusive || (!!mode.powersOn && !mode.powersOff);
-}
-
 export class FanAccessory {
   private readonly fanService: Service;
   private readonly modeServices = new Map<string, Service>();
@@ -100,16 +79,19 @@ export class FanAccessory {
       (service) => service.UUID === this.platform.Service.Fanv2.UUID && !service.subtype,
     ) ?? this.accessory.addService(this.platform.Service.Fanv2, this.config.name);
     this.fanService.setPrimaryService(true);
-    this.nameService(this.fanService, this.config.name);
+    // Only Name here: the primary service is named by the accessory, and
+    // ConfiguredName isn't a characteristic HAP declares for Fanv2.
+    this.fanService.setCharacteristic(this.platform.Characteristic.Name, this.config.name);
 
     this.fanService.getCharacteristic(this.platform.Characteristic.Active)
       .onGet(() => this.getActive())
       .onSet((value) => this.setActive(value));
 
-    if (this.levelCount(this.config.speed) > 1) {
+    const speed = this.config.speed;
+    if (speed && this.levelCount(speed) > 1) {
       this.fanService.getCharacteristic(this.platform.Characteristic.RotationSpeed)
-        .onGet(() => this.percentOf(this.config.speed))
-        .onSet((value) => this.setSpeedPercent(value));
+        .onGet(() => this.percentOf(speed))
+        .onSet((value) => this.setModePercent(speed, value));
     }
 
     if (this.config.swing) {
@@ -121,11 +103,16 @@ export class FanAccessory {
     for (const mode of this.config.modes ?? []) {
       this.setUpModeService(mode);
     }
+
+    this.platform.log.info(
+      `Fan "${this.config.name}": ${speed ? `${this.levelCount(speed)} speed(s)` : 'no speed control'}, `
+      + `swing ${this.config.swing ? 'yes' : 'no'}`
+      + `${(this.config.modes ?? []).length > 0 ? `, modes: ${(this.config.modes ?? []).map((m) => m.name).join(', ')}` : ''}`,
+    );
   }
 
-  // The Home app labels a bridged accessory's extra services off
-  // ConfiguredName, not just Name - without it every switch on a
-  // multi-service accessory shows up unlabelled.
+  // Extra services on a bridged accessory are labelled off ConfiguredName,
+  // not just Name - without it they show up unlabelled in the Home app.
   private nameService(service: Service, name: string): void {
     service.setCharacteristic(this.platform.Characteristic.Name, name);
     if (!service.testCharacteristic(this.platform.Characteristic.ConfiguredName)) {
@@ -170,7 +157,7 @@ export class FanAccessory {
   }
 
   private allModes(): FanModeConfig[] {
-    return [this.config.speed, ...(this.config.modes ?? [])];
+    return this.config.speed ? [this.config.speed, ...(this.config.modes ?? [])] : [...(this.config.modes ?? [])];
   }
 
   private getLevel(mode: FanModeConfig): number {
@@ -184,18 +171,9 @@ export class FanAccessory {
     this.accessory.context.levels = levels;
   }
 
-  private activeExclusive(): string | undefined {
-    return this.accessory.context.activeExclusive as string | undefined;
-  }
-
-  // An exclusive mode is running when it holds the exclusive slot; an
-  // ordinary mode is running when its level is above its off level.
   private isModeOn(mode: FanModeConfig): boolean {
     if (!this.isOn()) {
       return false;
-    }
-    if (mode.exclusive) {
-      return this.activeExclusive() === mode.name;
     }
     if (modeLevelsAreAllOn(mode)) {
       // No off level of its own - it runs whenever the fan does.
@@ -209,14 +187,6 @@ export class FanAccessory {
       return 0;
     }
     return percentForLevel(this.getLevel(mode), this.levelCount(mode), modeLevelsAreAllOn(mode));
-  }
-
-  // Hands the exclusive slot to `mode`. Whatever held it keeps its level
-  // parked so returning to it later can work out where the fan will land.
-  private takeExclusive(mode: FanModeConfig): void {
-    if (mode.exclusive) {
-      this.accessory.context.activeExclusive = mode.name;
-    }
   }
 
   private isOn(): boolean {
@@ -328,7 +298,7 @@ export class FanAccessory {
 
     const swing = this.config.swing;
     if (swing && (on ? swing.powersOn : swing.powersOff)) {
-      await this.send(swing.code);
+      await this.send(on ? swing.code : (swing.offCode ?? swing.code));
       this.accessory.context.swingOn = on;
       if (on) {
         this.accessory.context.on = true;
@@ -350,9 +320,6 @@ export class FanAccessory {
     for (const mode of this.allModes()) {
       if (!mode.remembersState) {
         this.setLevel(mode, 0);
-        if (mode.exclusive && this.activeExclusive() === mode.name) {
-          this.accessory.context.activeExclusive = undefined;
-        }
       }
     }
   }
@@ -390,27 +357,22 @@ export class FanAccessory {
     this.accessory.context.followUpDone = done;
   }
 
-  // Gets `mode` running. For an exclusive mode that's one press to claim
-  // the slot back, landing wherever the fan puts it; for anything else it
-  // means going to a level that counts as on.
   private async driveModeOn(mode: FanModeConfig): Promise<void> {
     if (mode.kind === 'onoff') {
       await this.send((mode.onCode ?? '') || (mode.offCode ?? ''));
-      this.takeExclusive(mode);
       this.setLevel(mode, 1);
       return;
     }
 
-    const levelCount = this.levelCount(mode);
     if (modeLevelsAreAllOn(mode)) {
-      // Entering costs one press; just take whichever level that lands on.
-      await this.driveToLevel(mode, this.entryLevel(mode));
+      // Entering costs one press; take whichever level that lands on.
+      await this.driveToLevel(mode, this.getLevel(mode));
       return;
     }
 
     // Lowest level that still counts as on - turning a mode on shouldn't
     // presume the user wanted it at full blast.
-    await this.driveToLevel(mode, Math.min(1, levelCount - 1));
+    await this.driveToLevel(mode, Math.min(1, this.levelCount(mode) - 1));
   }
 
   private async driveModeOff(mode: FanModeConfig): Promise<void> {
@@ -422,20 +384,6 @@ export class FanAccessory {
     } else if (mode.offCode) {
       await this.send(mode.offCode);
     }
-    if (mode.exclusive && this.activeExclusive() === mode.name) {
-      this.accessory.context.activeExclusive = undefined;
-    }
-  }
-
-  // Where the fan lands when this mode is entered from not running. An
-  // exclusive mode may advance a level as it is switched back to; anything
-  // else resumes whatever level we last tracked for it (already reset to 0
-  // by a power cycle the fan doesn't remember).
-  private entryLevel(mode: FanModeConfig): number {
-    if (mode.exclusive) {
-      return computeReturnLevel(this.getLevel(mode), this.levelCount(mode), !!mode.remembersOnReturn);
-    }
-    return this.getLevel(mode);
   }
 
   private async driveToLevel(mode: FanModeConfig, targetLevel: number): Promise<void> {
@@ -443,7 +391,7 @@ export class FanAccessory {
 
     if (modeLevelsAreAllOn(mode) && !this.isModeOn(mode)) {
       // Not running, so one press to get into it, then cycle to the target.
-      await this.repeat(mode.upCode, 1 + computeCyclePresses(this.entryLevel(mode), targetLevel, levelCount));
+      await this.repeat(mode.upCode, 1 + computeCyclePresses(this.getLevel(mode), targetLevel, levelCount));
     } else if (mode.downCode) {
       const { direction, presses } = computeStepPresses(this.getLevel(mode), targetLevel);
       await this.repeat(direction === 'up' ? mode.upCode : mode.downCode, presses);
@@ -451,7 +399,6 @@ export class FanAccessory {
       await this.repeat(mode.upCode, computeCyclePresses(this.getLevel(mode), targetLevel, levelCount));
     }
 
-    this.takeExclusive(mode);
     this.setLevel(mode, targetLevel);
   }
 
@@ -460,19 +407,10 @@ export class FanAccessory {
       return;
     }
 
-    // A mode with no off level and no off signal of its own can't just be
-    // switched off on its own terms.
+    // A mode with no off level and no off signal of its own can't be
+    // switched off on its own terms - its lowest level still runs, so
+    // "off" here means the fan is off.
     if (!on && modeLevelsAreAllOn(mode) && !mode.offCode && !mode.powersOff) {
-      if (mode.exclusive) {
-        // Left only by turning on a different mode - say so, rather than
-        // letting HomeKit drift out of sync with the fan.
-        this.platform.log.warn(
-          `"${mode.name}" on ${this.config.name} can only be left by turning on another mode - ignoring.`,
-        );
-        this.pushState();
-        return;
-      }
-      // Its lowest level still runs, so "off" here means the fan is off.
       try {
         await this.powerOff();
       } catch (error) {
@@ -534,10 +472,6 @@ export class FanAccessory {
     await this.setModeLevel(mode, levelForPercent(percent, this.levelCount(mode), modeLevelsAreAllOn(mode)));
   }
 
-  private async setSpeedPercent(value: CharacteristicValue): Promise<void> {
-    await this.setModePercent(this.config.speed, value);
-  }
-
   private async setSwingMode(value: CharacteristicValue): Promise<void> {
     const swing = this.config.swing;
     if (!swing) {
@@ -570,11 +504,9 @@ export class FanAccessory {
   // single press can change power, a mode and swing all at once.
   private pushState(): void {
     this.fanService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive());
-    if (this.levelCount(this.config.speed) > 1) {
-      this.fanService.updateCharacteristic(
-        this.platform.Characteristic.RotationSpeed,
-        this.percentOf(this.config.speed),
-      );
+    const speed = this.config.speed;
+    if (speed && this.levelCount(speed) > 1) {
+      this.fanService.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.percentOf(speed));
     }
     if (this.config.swing) {
       this.fanService.updateCharacteristic(this.platform.Characteristic.SwingMode, this.getSwingMode());

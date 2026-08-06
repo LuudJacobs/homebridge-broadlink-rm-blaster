@@ -501,7 +501,6 @@ async function learnFanMode(
   fanName: string,
   draft: FanModeDraft,
   isSpeed: boolean,
-  askExclusive: boolean,
 ): Promise<FanModeConfig | undefined> {
   console.log(`\n--- ${draft.name} ---`);
   const mode: FanModeConfig = { name: draft.name, kind: draft.kind };
@@ -552,18 +551,6 @@ async function learnFanMode(
     }
     mode.powersOn = await askYesNo(`Does the fan turn on when you step "${draft.name}" up a level?`);
     mode.powersOff = await askYesNo(`Does the fan turn off when you set "${draft.name}" to its lowest level?`);
-  }
-
-  if (askExclusive) {
-    mode.exclusive = await askYesNo(
-      `Is "${draft.name}" exclusive - does turning it on switch the fan's other modes off?`,
-    );
-    if (mode.exclusive && draft.kind === 'levels') {
-      mode.remembersOnReturn = await askYesNo(
-        `When you come back to "${draft.name}" from another mode, does it resume the level it was on? `
-        + '(no = the press that returns to it also moves it a level on)',
-      );
-    }
   }
 
   if (await askYesNo(`Is there another button that has to be pressed after activating "${draft.name}"?`)) {
@@ -686,14 +673,21 @@ async function learnFan(
   }
 
   // Shape of every mode first, so the summary below is worth confirming.
-  const speedCount = await askCount('\nHow many speeds does this fan have? Minimum 1 (1 means it is just on/off): ', 1);
-  const drafts: FanModeDraft[] = [
-    speedCount > 1
-      ? { name: 'Speed', kind: 'levels', levelCount: speedCount }
-      : { name: 'Speed', kind: 'onoff' },
-  ];
+  const speedCount = await askCount('\nHow many speeds does this fan have? Minimum 1: ', 1);
+  // One speed means there is nothing to vary, so there's no speed button
+  // to learn - the fan is simply on or off, handled by its power button.
+  const drafts: FanModeDraft[] = speedCount > 1
+    ? [{ name: 'Speed', kind: 'levels', levelCount: speedCount }]
+    : [];
+  if (speedCount === 1) {
+    console.log('\nOne speed, so there is no speed button to learn - the fan is just on or off.');
+  }
 
-  let addMore = await askYesNo('Does this fan have any other modes (e.g. Heat, Cooler)?');
+  let addMore = await askYesNo(
+    speedCount > 1
+      ? 'Does this fan have any other modes (e.g. Heat, Cooler)?'
+      : 'Does this fan have any modes (e.g. Heat, Cooler)?',
+  );
   while (addMore) {
     const modeName = await askNonEmpty('\nName for this mode: ');
     const hasLevels = await askYesNo(`Does "${modeName}" have levels? (no = it is a plain on/off mode)`);
@@ -715,8 +709,7 @@ async function learnFan(
   // Now learn the signals for each of them.
   const learned: FanModeConfig[] = [];
   for (const [index, draft] of drafts.entries()) {
-    // Exclusivity only means anything once there's more than one mode.
-    const mode = await learnFanMode(client, rmDevice.ip, settings, name, draft, index === 0, drafts.length > 1);
+    const mode = await learnFanMode(client, rmDevice.ip, settings, name, draft, speedCount > 1 && index === 0);
     if (!mode) {
       cancelled();
       return;
@@ -744,8 +737,11 @@ async function learnFan(
   }
   const power = powerOutcome.power;
 
-  const [speed, ...modes] = learned;
-  const item: FanAccessoryConfig = { name, rmDevice: rmDevice.name, speed };
+  const modes = speedCount > 1 ? learned.slice(1) : learned;
+  const item: FanAccessoryConfig = { name, rmDevice: rmDevice.name };
+  if (speedCount > 1) {
+    item.speed = learned[0];
+  }
   if (modes.length > 0) {
     item.modes = modes;
   }

@@ -89,14 +89,6 @@ export interface FanModeConfig {
   // Whether the fan restores this mode's setting after a power cycle.
   remembersState?: boolean;
 
-  // Exclusive modes can't run at the same time - activating one drops
-  // whichever other exclusive mode was running (e.g. heat vs fan).
-  exclusive?: boolean;
-  // Exclusive levels only: whether returning to this mode resumes the
-  // level it was left on, or whether the press that returns to it also
-  // advances a level (H1 -> fan -> H2 -> fan -> H1 ...).
-  remembersOnReturn?: boolean;
-
   followUp?: FanFollowUpConfig;
 }
 
@@ -124,9 +116,10 @@ export interface FanAccessoryConfig {
   pressIntervalSeconds?: number;
   power?: FanPowerConfig;
   swing?: FanSwingConfig;
-  // The fan's own speed control, always present - drives the Fanv2 tile's
-  // Active/RotationSpeed. A single-speed fan is just kind 'onoff'.
-  speed: FanModeConfig;
+  // The fan's own speed control, driving the Fanv2 tile's RotationSpeed.
+  // Omitted for a single-speed fan, which has nothing to vary - its tile
+  // is then just on/off, powered by `power` or by one of the modes.
+  speed?: FanModeConfig;
   // Any further modes (Heat, Cooler, ...), each exposed as its own service.
   modes?: FanModeConfig[];
 }
