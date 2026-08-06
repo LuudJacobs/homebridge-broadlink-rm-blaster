@@ -17,7 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   e.g. maxing out a heater's thermostat. Optionally exposes a resync
   switch that clears what the plugin thinks a fan is doing without
   sending any signals, for when the fan has been used from its own
-  remote. `broadlink-rm-learner` walks through all of it.
+  remote. The speed slider is debounced (0.5s by default) so dragging it
+  acts on where it lands rather than on every position it passes through.
+  `broadlink-rm-learner` walks through all of it.
 - `broadlink-rm-learner`: new "Just show hex code" option that captures a
   single signal and prints it for copy/pasting, without saving anything.
 
