@@ -572,8 +572,12 @@ async function learnFanMode(
     if (followUp.status === 'cancelled') {
       return undefined;
     }
-    const pressCount = await askCount(`\nHow many times should "${followUpName}" be pressed (Enter is not valid, minimum 1): `, 1);
-    mode.followUp = { name: followUpName, code: followUp.hex, pressCount };
+    const pressCount = await askCount(`\nHow many times should "${followUpName}" be pressed? Minimum 1: `, 1);
+    const everyActivation = await askYesNo(
+      `Send "${followUpName}" every time "${draft.name}" is switched on? `
+      + '(no = only the first time after the fan is powered on)',
+    );
+    mode.followUp = { name: followUpName, code: followUp.hex, pressCount, everyActivation };
   }
 
   mode.remembersState = await askYesNo(`Does the fan remember "${draft.name}"'s setting after a power cycle?`);
@@ -659,17 +663,26 @@ async function learnFan(
   // Swing.
   let swing: FanSwingConfig | undefined;
   if (await askYesNo('Does this fan have a swing/oscillation function?')) {
-    const swingSignal = await learnRequiredSignal(client, rmDevice.ip, settings, 'Swing');
-    if (swingSignal.status === 'cancelled') {
+    const separateSwing = await askYesNo(
+      'Are swing on and swing off separate buttons? (no = one button toggles swing)',
+    );
+    const swingOn = await learnRequiredSignal(client, rmDevice.ip, settings, separateSwing ? 'Swing On' : 'Swing');
+    if (swingOn.status === 'cancelled') {
       cancelled();
       return;
     }
-    swing = {
-      code: swingSignal.hex,
-      remembersState: await askYesNo('Does the fan remember whether it was swinging after a power cycle?'),
-      powersOn: await askYesNo('Does the fan power on when swing is turned on?'),
-      powersOff: await askYesNo('Does the fan power off when swing is turned off?'),
-    };
+    swing = { code: swingOn.hex };
+    if (separateSwing) {
+      const swingOff = await learnRequiredSignal(client, rmDevice.ip, settings, 'Swing Off');
+      if (swingOff.status === 'cancelled') {
+        cancelled();
+        return;
+      }
+      swing.offCode = swingOff.hex;
+    }
+    swing.remembersState = await askYesNo('Does the fan remember whether it was swinging after a power cycle?');
+    swing.powersOn = await askYesNo('Does the fan power on when swing is turned on?');
+    swing.powersOff = await askYesNo('Does the fan power off when swing is turned off?');
   }
 
   // Shape of every mode first, so the summary below is worth confirming.

@@ -56,6 +56,10 @@ export interface FanFollowUpConfig {
   name: string;
   code: string;
   pressCount: number;
+  // When false, it is only sent the first time the mode is activated after
+  // the fan is powered on, rather than on every activation. Never sent for
+  // a plain level change either way.
+  everyActivation?: boolean;
 }
 
 // Modes are either a plain on/off toggle, or a set of discrete levels.
@@ -97,7 +101,9 @@ export interface FanModeConfig {
 }
 
 export interface FanSwingConfig {
+  // The swing button. When offCode is omitted this one toggles swing.
   code: string;
+  offCode?: string;
   remembersState?: boolean;
   powersOn?: boolean;
   powersOff?: boolean;
