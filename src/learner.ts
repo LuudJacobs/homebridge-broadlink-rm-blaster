@@ -513,6 +513,7 @@ async function learnFan(
 
   let swingOnCode: string | undefined;
   let swingOffCode: string | undefined;
+  let swingRemembersState = false;
   const swingOn = await learnOptionalSignal(client, rmDevice.ip, settings, 'Swing On (skip if this fan has no swing function)');
   if (swingOn.status === 'cancelled') {
     console.log('Cancelled - nothing saved for this fan.');
@@ -528,6 +529,13 @@ async function learnFan(
     if (swingOff.status === 'learned') {
       swingOffCode = swingOff.hex;
     }
+
+    const rememberChoice = await readKey(
+      '\nDoes this fan remember whether it was oscillating the next time it turns on, or does it always come back with ' +
+      'oscillation off? (Enter if it always resets to off, "r" if it remembers): ',
+      ['', 'r'],
+    );
+    swingRemembersState = rememberChoice === 'r';
   }
 
   const modes: FanModeConfig[] = [];
@@ -557,6 +565,16 @@ async function learnFan(
 
     const levelCount = await askLevelCount(modeName);
 
+    let resumesLastLevel = false;
+    if (levelCount > 1) {
+      const resumeChoice = await readKey(
+        `\nWhen entering "${modeName}", does it always start at level 1, or does it resume whatever level was last used? ` +
+        '(Enter if it always starts at level 1, "r" if it resumes/remembers): ',
+        ['', 'r'],
+      );
+      resumesLastLevel = resumeChoice === 'r';
+    }
+
     let additionalEnterCode: string | undefined;
     let additionalEnterRepeatCount: number | undefined;
     const additional = await learnOptionalSignal(
@@ -581,6 +599,9 @@ async function learnFan(
     };
     if (cycleCode) {
       mode.cycleCode = cycleCode;
+    }
+    if (resumesLastLevel) {
+      mode.resumesLastLevel = true;
     }
     if (additionalEnterCode) {
       mode.additionalEnterCode = additionalEnterCode;
@@ -615,6 +636,9 @@ async function learnFan(
   }
   if (swingOffCode) {
     item.swingOffCode = swingOffCode;
+  }
+  if (swingRemembersState) {
+    item.swingRemembersState = true;
   }
 
   const needsInterval = modes.length > 1
