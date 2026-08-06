@@ -256,9 +256,14 @@
               "description": "Leave empty if this fan has no swing/oscillation function.",
               "properties": {
                 "code": {
-                  "title": "Swing Signal",
+                  "title": "Swing Signal (or Swing On, if on and off are separate buttons)",
                   "type": "string",
                   "required": true
+                },
+                "offCode": {
+                  "title": "Swing Off Signal (leave empty if the Swing Signal toggles)",
+                  "type": "string",
+                  "required": false
                 },
                 "remembersState": {
                   "title": "Fan Remembers Swing State",
@@ -385,6 +390,13 @@
                       "minimum": 1,
                       "default": 1,
                       "required": true
+                    },
+                    "everyActivation": {
+                      "title": "Send On Every Activation",
+                      "type": "boolean",
+                      "default": false,
+                      "required": false,
+                      "description": "When off, this is only sent the first time the mode is switched on after the fan is powered on. Never sent for a plain level change."
                     }
                   }
                 }
@@ -502,6 +514,13 @@
                         "minimum": 1,
                         "default": 1,
                         "required": true
+                      },
+                      "everyActivation": {
+                        "title": "Send On Every Activation",
+                        "type": "boolean",
+                        "default": false,
+                        "required": false,
+                        "description": "When off, this is only sent the first time the mode is switched on after the fan is powered on. Never sent for a plain level change."
                       }
                     }
                   }
@@ -817,6 +836,7 @@
           "expanded": false,
           "items": [
             "fans[].swing.code",
+            "fans[].swing.offCode",
             "fans[].swing.remembersState",
             "fans[].swing.powersOn",
             "fans[].swing.powersOff"
@@ -842,7 +862,8 @@
             "fans[].speed.remembersState",
             "fans[].speed.followUp.name",
             "fans[].speed.followUp.code",
-            "fans[].speed.followUp.pressCount"
+            "fans[].speed.followUp.pressCount",
+            "fans[].speed.followUp.everyActivation"
           ]
         },
         {
@@ -867,7 +888,8 @@
             "fans[].modes[].remembersState",
             "fans[].modes[].followUp.name",
             "fans[].modes[].followUp.code",
-            "fans[].modes[].followUp.pressCount"
+            "fans[].modes[].followUp.pressCount",
+            "fans[].modes[].followUp.everyActivation"
           ]
         }
       ]

@@ -20,7 +20,8 @@
   "main": "dist/index.js",
   "bin": {
     "broadlink-rm-blaster": "dist/cli.js",
-    "broadlink-rm-learner": "dist/learner.js"
+    "broadlink-rm-learner": "dist/learner.js",
+    "broadlink-rm-manager": "dist/manager.js"
   },
   "files": [
     "dist",

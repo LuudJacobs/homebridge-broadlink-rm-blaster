@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  modeLevelsAreAllOn,
   computeActivationPresses,
   computeCyclePresses,
   computeReturnLevel,
@@ -92,4 +93,23 @@ test('computeActivationPresses costs one press to re-enter, plus any cycling', (
   assert.equal(computeActivationPresses(0, 0, 2, true), 1);
   // Parked on H1, remembering fan lands on H1 but we want H2.
   assert.equal(computeActivationPresses(0, 1, 2, true), 2);
+});
+
+test('a mode that powers the fan on but never off has no off level of its own (fan #1)', () => {
+  // Speed button runs 1 -> 2 -> 3 -> 1, with a separate off button, so
+  // every one of its levels is a running speed.
+  assert.equal(modeLevelsAreAllOn({ name: 'Speed', kind: 'levels', powersOn: true }), true);
+});
+
+test('a mode whose lowest level powers the fan off does have an off level', () => {
+  // off -> 1 -> 2 -> 3 -> off, so level 0 really is off.
+  assert.equal(modeLevelsAreAllOn({ name: 'Speed', kind: 'levels', powersOn: true, powersOff: true }), false);
+});
+
+test('a mode that does not control power at all keeps level 0 as its off level (cooler)', () => {
+  assert.equal(modeLevelsAreAllOn({ name: 'Cooler', kind: 'levels' }), false);
+});
+
+test('every level of an exclusive mode is a running level', () => {
+  assert.equal(modeLevelsAreAllOn({ name: 'Heat', kind: 'levels', exclusive: true }), true);
 });
