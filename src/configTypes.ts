@@ -55,6 +55,7 @@ export interface FanModeConfig {
   enterCode: string;
   cycleCode?: string;
   levelCount: number;
+  resumesLastLevel?: boolean;
   additionalEnterCode?: string;
   additionalEnterRepeatCount?: number;
 }
@@ -66,6 +67,7 @@ export interface FanAccessoryConfig {
   onCode?: string;
   swingOnCode?: string;
   swingOffCode?: string;
+  swingRemembersState?: boolean;
   pressIntervalSeconds?: number;
   modes: FanModeConfig[];
 }

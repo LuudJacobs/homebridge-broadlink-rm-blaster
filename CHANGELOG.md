@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   there's more than one. `broadlink-rm-learner` can learn these too.
 - Fans: optional On signal, for fans whose speed/mode buttons don't turn
   the fan on by themselves - a separate dedicated power button.
+- Fans: optional "fan remembers oscillation state" and per-mode "resumes
+  last-used level" settings, so the learner can ask about each fan's real
+  behavior instead of always assuming the worst case.
 - `broadlink-rm-learner`: new "Just show hex code" option that captures a
   single signal and prints it for copy/pasting, without saving anything.
 
