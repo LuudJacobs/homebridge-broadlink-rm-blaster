@@ -580,39 +580,66 @@ async function learnFanMode(
   return mode;
 }
 
-// Learns whichever power signals are still needed. When both directions
-// are wanted the fan might use one toggle button for both; when only one
-// direction is missing there's exactly one signal to learn.
+type PowerOutcome = { status: 'ok'; power?: FanPowerConfig } | { status: 'cancelled' };
+
+// A signal that can only be skipped when something else already covers
+// what it would have done.
+async function learnPowerSignal(
+  client: BroadlinkClient,
+  ip: string,
+  settings: SignalSettings,
+  label: string,
+  skippable: boolean,
+): Promise<LearnOutcome | { status: 'skipped' }> {
+  if (skippable) {
+    return learnOptionalSignal(client, ip, settings, `${label} (skip if the fan has no separate button for this)`);
+  }
+  return learnRequiredSignal(client, ip, settings, label);
+}
+
+// A fan can have a dedicated power button even when a mode or swing
+// already powers it, so this is always offered. Each direction can only be
+// skipped when something else was already said to cover it.
 async function learnPowerButton(
   client: BroadlinkClient,
   ip: string,
   settings: SignalSettings,
-  needOn: boolean,
-  needOff: boolean,
-): Promise<FanPowerConfig | undefined> {
-  if (needOn && needOff) {
-    const separate = await askYesNo('Are power on and power off separate buttons? (no = one button toggles power)');
-    if (!separate) {
-      const toggle = await learnRequiredSignal(client, ip, settings, 'Power');
-      return toggle.status === 'cancelled' ? undefined : { toggleCode: toggle.hex };
+  onCovered: boolean,
+  offCovered: boolean,
+): Promise<PowerOutcome> {
+  if (onCovered && offCovered) {
+    if (!(await askYesNo('Does this fan also have a separate power button?'))) {
+      return { status: 'ok' };
     }
-    const on = await learnRequiredSignal(client, ip, settings, 'Power On');
-    if (on.status === 'cancelled') {
-      return undefined;
-    }
-    const off = await learnRequiredSignal(client, ip, settings, 'Power Off');
-    if (off.status === 'cancelled') {
-      return undefined;
-    }
-    return { onCode: on.hex, offCode: off.hex };
   }
 
-  const label = needOn ? 'Power On' : 'Power Off';
-  const signal = await learnRequiredSignal(client, ip, settings, label);
-  if (signal.status === 'cancelled') {
-    return undefined;
+  const separate = await askYesNo('Are power on and power off separate buttons? (no = one button toggles power)');
+
+  if (!separate) {
+    const toggle = await learnPowerSignal(client, ip, settings, 'Power', onCovered && offCovered);
+    if (toggle.status === 'cancelled') {
+      return { status: 'cancelled' };
+    }
+    return { status: 'ok', power: toggle.status === 'skipped' ? undefined : { toggleCode: toggle.hex } };
   }
-  return needOn ? { onCode: signal.hex } : { offCode: signal.hex };
+
+  const on = await learnPowerSignal(client, ip, settings, 'Power On', onCovered);
+  if (on.status === 'cancelled') {
+    return { status: 'cancelled' };
+  }
+  const off = await learnPowerSignal(client, ip, settings, 'Power Off', offCovered);
+  if (off.status === 'cancelled') {
+    return { status: 'cancelled' };
+  }
+
+  const power: FanPowerConfig = {};
+  if (on.status === 'learned') {
+    power.onCode = on.hex;
+  }
+  if (off.status === 'learned') {
+    power.offCode = off.hex;
+  }
+  return { status: 'ok', power: Object.keys(power).length > 0 ? power : undefined };
 }
 
 async function learnFan(
@@ -684,34 +711,25 @@ async function learnFan(
     learned.push(mode);
   }
 
-  // Power. Only ask about the directions nothing else already covers - a
-  // fan can perfectly well power on via its speed button but still have a
-  // dedicated off button, and then there's no "power on" signal to learn.
+  // Power. A fan may have a dedicated power button on top of whatever mode
+  // or swing button also powers it, so this is always offered - but only
+  // the directions something else already covers can be skipped.
   const onCovered = !!swing?.powersOn || learned.some((mode) => mode.powersOn);
   const offCovered = !!swing?.powersOff || learned.some((mode) => mode.powersOff);
-  let power: FanPowerConfig | undefined;
 
-  if (onCovered && offCovered) {
-    if (await askYesNo('Does this fan also have a separate power button?')) {
-      power = await learnPowerButton(client, rmDevice.ip, settings, true, true);
-      if (!power) {
-        cancelled();
-        return;
-      }
-    }
-  } else {
-    if (!onCovered && !offCovered) {
-      console.log('\nNothing else was said to control power, so this fan needs its own power button.');
-    } else {
-      console.log(`\nThe fan already powers ${onCovered ? 'on' : 'off'} via one of the above, so only the `
-        + `power ${onCovered ? 'off' : 'on'} signal is still needed.`);
-    }
-    power = await learnPowerButton(client, rmDevice.ip, settings, !onCovered, !offCovered);
-    if (!power) {
-      cancelled();
-      return;
-    }
+  if (!onCovered && !offCovered) {
+    console.log('\nNothing else was said to control power, so this fan needs its own power button.');
+  } else if (onCovered !== offCovered) {
+    console.log(`\nThe fan already powers ${onCovered ? 'on' : 'off'} via one of the above, so the power `
+      + `${onCovered ? 'on' : 'off'} signal can be skipped if it has no separate button for it.`);
   }
+
+  const powerOutcome = await learnPowerButton(client, rmDevice.ip, settings, onCovered, offCovered);
+  if (powerOutcome.status === 'cancelled') {
+    cancelled();
+    return;
+  }
+  const power = powerOutcome.power;
 
   const [speed, ...modes] = learned;
   const item: FanAccessoryConfig = { name, rmDevice: rmDevice.name, speed };
