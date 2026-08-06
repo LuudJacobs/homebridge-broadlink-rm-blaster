@@ -10,7 +10,7 @@ import type {
 
 import { BroadlinkClient } from './broadlinkClient';
 import { NtfyNotifier } from './ntfyNotifier';
-import { DEFAULT_MQTT_BASE_TOPIC, MqttPublisher } from './mqttPublisher';
+import { DEFAULT_MQTT_BASE_TOPIC, MqttBridge } from './mqttClient';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
@@ -27,7 +27,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
   public readonly accessories: PlatformAccessory[] = [];
   public readonly broadlinkClient: BroadlinkClient;
   public readonly notifier: NtfyNotifier;
-  public readonly mqttPublisher: MqttPublisher;
+  public readonly mqtt: MqttBridge;
 
   private readonly activeUuids = new Set<string>();
 
@@ -45,7 +45,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       deviceNames.set(rmDevice.ip, rmDevice.name);
     }
     this.notifier = new NtfyNotifier(this.log, blasterConfig.ntfyTopic, deviceNames);
-    this.mqttPublisher = new MqttPublisher(
+    this.mqtt = new MqttBridge(
       this.log,
       !!blasterConfig.enableMqtt,
       blasterConfig.mqttHost,

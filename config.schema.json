@@ -417,6 +417,25 @@
               "default": false,
               "required": false,
               "description": "Exposes swing on its own switch as well as the fan's built-in oscillate control. Worth enabling whenever this fan has other switches, because the Home app hides its oscillate control once an accessory is more than just a fan."
+            },
+            "mqttSubscribe": {
+              "title": "Control via MQTT",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Drive this fan from MQTT messages. Requires the MQTT settings above to be enabled and filled in.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true;"
+              }
+            },
+            "mqttTopic": {
+              "title": "MQTT Topic",
+              "type": "string",
+              "required": false,
+              "description": "The fan's own part of the topic; it listens on <base topic>/<this>. Messages are JSON, e.g. {\"state\":\"ON\", \"speed\": 100, \"swing\": \"ON\"} - state turns the fan on or off, speed is a percentage, swing turns oscillation on or off. Anything left out is not changed.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.fans && model.fans[arrayIndices] && model.fans[arrayIndices].mqttSubscribe === true;"
+              }
             }
           }
         }
@@ -729,6 +748,8 @@
         "fans[].pressIntervalSeconds",
         "fans[].speedDebounceSeconds",
         "fans[].resyncSwitch",
+        "fans[].mqttSubscribe",
+        "fans[].mqttTopic",
         {
           "type": "array",
           "key": "fans[].modes",
