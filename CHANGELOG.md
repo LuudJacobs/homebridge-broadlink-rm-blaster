@@ -16,8 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the fan - configured per fan, including which settings the fan restores
   after a power cycle. Modes can be marked exclusive, so turning one on
   switches the others off (heat vs fan), including fans where the press
-  that returns to a mode also moves it a level on.
+  that returns to a mode also moves it a level on. Swing can be a single
+  toggle or separate on/off buttons, and a mode's follow-up signal can
+  fire on every activation or only the first after powering on.
   `broadlink-rm-learner` walks through all of it.
+- `broadlink-rm-manager`, a new CLI to rename, remove, or reset configured
+  accessories. Reset clears an accessory's remembered state back to off/0
+  without sending any signals, for when HomeKit has drifted from what a
+  device is actually doing (e.g. after someone used its own remote).
 - `broadlink-rm-learner`: new "Just show hex code" option that captures a
   single signal and prints it for copy/pasting, without saving anything.
 

@@ -12,6 +12,7 @@ import { BroadlinkClient } from './broadlinkClient';
 import { NtfyNotifier } from './ntfyNotifier';
 import { DEFAULT_MQTT_BASE_TOPIC, MqttPublisher } from './mqttPublisher';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
+import { accessoryUuidSeed } from './deviceKinds';
 import { BlasterPlatformConfig } from './configTypes';
 import { BasicAccessory } from './accessories/basicAccessory';
 import { AdvancedAccessory } from './accessories/advancedAccessory';
@@ -79,7 +80,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
         continue;
       }
 
-      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:${accessoryConfig.name}`);
+      const uuid = this.api.hap.uuid.generate(accessoryUuidSeed('', accessoryConfig.name));
       this.upsertAccessory(uuid, accessoryConfig.name, (accessory) => {
         accessory.context.accessoryConfig = accessoryConfig;
         new BasicAccessory(this, accessory, accessoryConfig, ip);
@@ -99,7 +100,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
         continue;
       }
 
-      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:advanced:${advancedConfig.name}`);
+      const uuid = this.api.hap.uuid.generate(accessoryUuidSeed('advanced:', advancedConfig.name));
       this.upsertAccessory(uuid, advancedConfig.name, (accessory) => {
         accessory.context.advancedConfig = advancedConfig;
         new AdvancedAccessory(this, accessory, advancedConfig, ip);
@@ -117,7 +118,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
         continue;
       }
 
-      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:fan:${fanConfig.name}`);
+      const uuid = this.api.hap.uuid.generate(accessoryUuidSeed('fan:', fanConfig.name));
       this.upsertAccessory(uuid, fanConfig.name, (accessory) => {
         accessory.context.fanConfig = fanConfig;
         new FanAccessory(this, accessory, fanConfig, ip);
@@ -135,7 +136,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
         continue;
       }
 
-      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:dimmer:${dimmerConfig.name}`);
+      const uuid = this.api.hap.uuid.generate(accessoryUuidSeed('dimmer:', dimmerConfig.name));
       this.upsertAccessory(uuid, dimmerConfig.name, (accessory) => {
         accessory.context.dimmerConfig = dimmerConfig;
         new DimmerAccessory(this, accessory, dimmerConfig, ip);
@@ -193,7 +194,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
         continue;
       }
 
-      const uuid = this.api.hap.uuid.generate(`${PLUGIN_NAME}:tv:${tvConfig.name}`);
+      const uuid = this.api.hap.uuid.generate(accessoryUuidSeed('tv:', tvConfig.name));
       const accessory = new this.api.platformAccessory(tvConfig.name, uuid);
       accessory.context.tvConfig = tvConfig;
       // Fully configures every service/characteristic (including
