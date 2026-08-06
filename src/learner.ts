@@ -603,10 +603,10 @@ async function learnFan(
       item.speedDownCode = down.hex;
     }
     item.speedPowersOn = await askYesNo('Does pressing speed up turn the fan on?');
-    item.speedPowersOff = await askYesNo('Does the lowest speed turn the fan off?');
+    item.speedPowersOff = await askYesNo('Does going to the lowest speed turn the fan off?');
     item.speedResumes = await askYesNo(
-      'When you turn the fan on, does it come back at the speed it was on? '
-      + '(no = you have to press the speed button to get it going)',
+      'When the fan is turned off and back on again, does it remember the speed it was set to? '
+      + '(no = it starts at its lowest speed again)',
     );
   } else {
     console.log('\nOne speed, so there is no speed button to learn - the fan is just on or off.');
@@ -629,7 +629,9 @@ async function learnFan(
     if (swing.offCode) {
       item.swingOffCode = swing.offCode;
     }
-    item.swingRemembers = await askYesNo('Does the fan still swing after a power cycle?');
+    item.swingRemembers = await askYesNo(
+      'When the fan is turned off and back on again, is it still swinging?',
+    );
     item.swingPowersOn = await askYesNo('Does turning swing on power the fan on?');
     item.swingPowersOff = await askYesNo('Does turning swing off power the fan off?');
   }
@@ -658,7 +660,9 @@ async function learnFan(
     console.log(`\nThis will show up in the Home app as "${name} ${modeName}".`);
     mode.powersOn = await askYesNo(`Does turning "${modeName}" on power the fan on?`);
     mode.powersOff = await askYesNo(`Does turning "${modeName}" off power the fan off?`);
-    mode.remembers = await askYesNo(`Is "${modeName}" still on after a power cycle?`);
+    mode.remembers = await askYesNo(
+      `When the fan is turned off and back on again, is "${modeName}" still on?`,
+    );
     modes.push(mode);
 
     console.log(`\nFeatures so far: ${modes.map((entry) => entry.name).join(', ')}`);
