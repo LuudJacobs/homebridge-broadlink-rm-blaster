@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { buildTopic } from '../src/mqttPublisher';
+import { buildTopic } from '../src/mqttClient';
 
 test('buildTopic joins the prefix and a plain device name', () => {
   assert.equal(buildTopic('homebridge-broadlink-rm-blaster', 'default'), 'homebridge-broadlink-rm-blaster/default');

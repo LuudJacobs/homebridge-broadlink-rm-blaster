@@ -30,7 +30,7 @@ hb-service add homebridge-broadlink-rm-blaster
 - **TVs** power on/off plus a usable remote in the iOS Remote app
 - **Temperature/humidity sensor** optionally expose sensor data
 - **ntfy.sh notifications** push notification when a RM fails to connect
-- **MQTT publishing** optionally publish sensor data to a MQTT broker
+- **MQTT** optionally publish sensor data to a broker, and drive fans from MQTT messages
 - **Fully configurable** via the Homebridge Config UI X plugin settings form
 
 ## Configuration

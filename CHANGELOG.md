@@ -24,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   debounced (0.5s by default) so dragging it
   acts on where it lands rather than on every position it passes through.
   `broadlink-rm-learner` walks through all of it.
+- Fans can be driven from MQTT. Tick "Control via MQTT" on a fan and give
+  it a topic; it then listens on `<base topic>/<topic>` for JSON messages
+  like `{"state":"ON", "speed": 100, "swing": "ON"}`, where anything left
+  out is not changed. Retained messages are applied on connect, so the fan
+  follows the last published state across a restart.
 - `broadlink-rm-learner`: new "Just show hex code" option that captures a
   single signal and prints it for copy/pasting, without saving anything.
 

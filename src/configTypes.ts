@@ -104,6 +104,11 @@ export interface FanAccessoryConfig {
 
   modes?: FanModeConfig[];
 
+  // Listens for commands on <mqttBaseTopic>/<mqttTopic>. Needs the
+  // platform's MQTT settings to be filled in and enabled.
+  mqttSubscribe?: boolean;
+  mqttTopic?: string;
+
   // Exposes swing on its own switch as well as the fan's built-in
   // oscillate control. The learner turns this on when the fan carries
   // other services, since the Home app hides its oscillate control as
