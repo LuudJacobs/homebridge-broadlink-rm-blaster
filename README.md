@@ -23,7 +23,7 @@ hb-service add homebridge-broadlink-rm-blaster
 
 - **Multiple RM devices** configure several Broadlink RMs and assign each accessory to whichever one
 - **Interactive code learning** learn codes straight from your remote and add them to your config
-- **Basic accessories** power on/off
+- **Simple on/off accessories** power on/off
 - **Advanced accessories** one press sends multiple signals in sequence, with a configurable timeout between them
 - **Dimmer lights** one signal per discrete brightness level
 - **Fans** speed control, optional swing, and optional extra modes (e.g. heat/cool), each with their own speed levels
@@ -49,7 +49,9 @@ broadlink-rm-learner
 
 Run `broadlink-rm-learner --help` for usage details. Advanced Accessories
 (multiple signals per press) and Fans (speed levels, modes, swing) can be
-learned too, alongside Basic Accessories, TVs, and Dimmer Lights.
+learned too, alongside Simple On/Off Accessories, TVs, and Dimmer Lights.
+There's also a "just show hex code" option that captures a single signal
+and prints it for copy/pasting, without saving anything.
 
 Backs up `config.json` to `config.json.backup` once per session before writing anything.
 
