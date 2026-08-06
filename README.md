@@ -1,4 +1,4 @@
-# Broadlink RM Blaster 1.5.0
+# Broadlink RM Blaster 1.6.0
 
 **This Homebridge plugin has been 100% vibe coded with Claude.**
 
@@ -26,6 +26,7 @@ hb-service add homebridge-broadlink-rm-blaster
 - **Basic accessories** power on/off
 - **Advanced accessories** one press sends multiple signals in sequence, with a configurable timeout between them
 - **Dimmer lights** one signal per discrete brightness level
+- **Fans** speed control, optional swing, and optional extra modes (e.g. heat/cool), each with their own speed levels
 - **TVs** power on/off plus a usable remote in the iOS Remote app
 - **Temperature/humidity sensor** optionally expose sensor data
 - **ntfy.sh notifications** push notification when a RM fails to connect
@@ -47,8 +48,8 @@ broadlink-rm-learner
 ```
 
 Run `broadlink-rm-learner --help` for usage details. Advanced Accessories
-(multiple signals per press) can be learned too, alongside Basic
-Accessories, TVs, and Dimmer Lights.
+(multiple signals per press) and Fans (speed levels, modes, swing) can be
+learned too, alongside Basic Accessories, TVs, and Dimmer Lights.
 
 Backs up `config.json` to `config.json.backup` once per session before writing anything.
 
