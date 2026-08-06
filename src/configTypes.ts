@@ -103,6 +103,11 @@ export interface FanAccessoryConfig {
   onFollowUpPressCount?: number;
 
   modes?: FanModeConfig[];
+
+  // Exposes a momentary switch that clears what the plugin thinks the fan
+  // is doing, without sending any signals - for when the fan has been used
+  // from its own remote and HomeKit no longer matches reality.
+  resyncSwitch?: boolean;
 }
 
 export interface TvAccessoryConfig {

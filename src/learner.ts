@@ -705,6 +705,11 @@ async function learnFan(
     item.pressIntervalSeconds = await askTimeoutSeconds();
   }
 
+  item.resyncSwitch = await askYesNo(
+    'Expose a resync switch in the Home app? It clears what the plugin thinks this fan is doing, '
+    + 'without sending any signals - handy after using the fan\'s own remote',
+  );
+
   pendingItems.push({ type: 'fans', item });
   console.log(`\n"${name}" queued to be saved.`);
 }

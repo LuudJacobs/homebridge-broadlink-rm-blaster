@@ -395,6 +395,13 @@
                   }
                 }
               }
+            },
+            "resyncSwitch": {
+              "title": "Resync Switch",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Exposes a switch that clears what the plugin thinks this fan is doing, without sending any signals. Useful after the fan has been used from its own remote."
             }
           }
         }
@@ -704,6 +711,7 @@
         "fans[].onFollowUpCode",
         "fans[].onFollowUpPressCount",
         "fans[].pressIntervalSeconds",
+        "fans[].resyncSwitch",
         {
           "type": "array",
           "key": "fans[].modes",
