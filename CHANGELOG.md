@@ -17,9 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   e.g. maxing out a heater's thermostat. Optionally exposes a resync
   switch that clears what the plugin thinks a fan is doing without
   sending any signals, for when the fan has been used from its own
-  remote. Swing also gets its own switch when the accessory carries any
-  other service, since the Home app hides its built-in oscillate control
-  as soon as an accessory is more than just a fan. The speed slider is
+  remote. Swing can also be put on its own switch, which the learner
+  enables when the fan carries other services, since the Home app hides
+  its built-in oscillate control as soon as an accessory is more than
+  just a fan. The speed slider is
   debounced (0.5s by default) so dragging it
   acts on where it lands rather than on every position it passes through.
   `broadlink-rm-learner` walks through all of it.

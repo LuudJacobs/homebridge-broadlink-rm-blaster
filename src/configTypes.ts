@@ -104,6 +104,12 @@ export interface FanAccessoryConfig {
 
   modes?: FanModeConfig[];
 
+  // Exposes swing on its own switch as well as the fan's built-in
+  // oscillate control. The learner turns this on when the fan carries
+  // other services, since the Home app hides its oscillate control as
+  // soon as an accessory is more than just a fan.
+  swingSwitch?: boolean;
+
   // How long to wait for the speed slider to settle before acting on it.
   // HomeKit sends a value for every intermediate position while a slider
   // is dragged, and each one would otherwise fire its own presses.
