@@ -4,6 +4,7 @@ import type { BroadlinkRMBlasterPlatform } from '../platform';
 import type { FanAccessoryConfig, FanModeConfig } from '../configTypes';
 
 const DEFAULT_PRESS_INTERVAL_SECONDS = 0.5;
+const DEFAULT_SPEED_DEBOUNCE_SECONDS = 0.5;
 
 // Long enough that HomeKit's own optimistic UI doesn't ignore the update
 // that puts a momentary switch back to off.
@@ -68,7 +69,10 @@ export class FanAccessory {
   private readonly fanService: Service;
   private readonly modeServices = new Map<string, Service>();
   private readonly intervalMs: number;
+  private readonly speedDebounceMs: number;
   private readonly speedCount: number;
+  private speedDebounceTimer?: NodeJS.Timeout;
+  private pendingSpeedPercent?: number;
 
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
@@ -77,6 +81,7 @@ export class FanAccessory {
     private readonly ip: string,
   ) {
     this.intervalMs = (this.config.pressIntervalSeconds ?? DEFAULT_PRESS_INTERVAL_SECONDS) * 1000;
+    this.speedDebounceMs = (this.config.speedDebounceSeconds ?? DEFAULT_SPEED_DEBOUNCE_SECONDS) * 1000;
     this.speedCount = this.config.speedCount ?? 1;
 
     // getService() returns the first match for a UUID regardless of
@@ -169,6 +174,7 @@ export class FanAccessory {
   }
 
   private resyncState(): void {
+    this.cancelPendingSpeed();
     this.accessory.context.on = false;
     this.accessory.context.speedLevel = 0;
     this.accessory.context.speedEntered = false;
@@ -257,6 +263,9 @@ export class FanAccessory {
     const wantOn = value === this.platform.Characteristic.Active.ACTIVE;
     if (wantOn === this.isOn()) {
       return;
+    }
+    if (!wantOn) {
+      this.cancelPendingSpeed();
     }
     try {
       if (wantOn) {
@@ -428,8 +437,35 @@ export class FanAccessory {
     this.accessory.context.speedEntered = true;
   }
 
-  private async setSpeedPercent(value: CharacteristicValue): Promise<void> {
-    const percent = Number(value);
+  // Dragging a slider in the Home app produces a value for every position
+  // it passes through, and acting on each one would blast the fan with
+  // presses for speeds the user never meant to stop at. Wait for it to
+  // settle and act on the final value only.
+  private setSpeedPercent(value: CharacteristicValue): void {
+    this.pendingSpeedPercent = Number(value);
+    if (this.speedDebounceTimer) {
+      clearTimeout(this.speedDebounceTimer);
+    }
+    this.speedDebounceTimer = setTimeout(() => {
+      this.speedDebounceTimer = undefined;
+      const percent = this.pendingSpeedPercent;
+      this.pendingSpeedPercent = undefined;
+      if (percent === undefined) {
+        return;
+      }
+      void this.applySpeedPercent(percent);
+    }, this.speedDebounceMs);
+  }
+
+  private cancelPendingSpeed(): void {
+    if (this.speedDebounceTimer) {
+      clearTimeout(this.speedDebounceTimer);
+      this.speedDebounceTimer = undefined;
+    }
+    this.pendingSpeedPercent = undefined;
+  }
+
+  private async applySpeedPercent(percent: number): Promise<void> {
     const allOn = speedsAreAllOn(this.config);
 
     if (percent <= 0) {
@@ -453,7 +489,8 @@ export class FanAccessory {
       this.accessory.context.on = true;
       this.platform.log.info(`Set speed to level ${targetLevel} on ${this.config.name}`);
     } catch (error) {
-      this.fail(error);
+      // Nothing to throw to - HomeKit was answered when the slider moved.
+      this.platform.log.error(`Failed to set speed on "${this.config.name}": ${(error as Error).message}`);
     }
     this.pushState();
   }
