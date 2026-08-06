@@ -14,14 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   switch. Power can come from a dedicated button - one toggle, or separate
   on/off - or from whichever speed, swing or feature button actually
   powers the fan. A signal can be sent every time the fan is turned on,
-  e.g. maxing out a heater's thermostat. `broadlink-rm-learner` walks
-  through all of it.
-- `broadlink-rm-manager`, a new CLI to rename, remove, or reset configured
-  accessories. Reset clears an accessory's remembered state back to off/0
-  without sending any signals, for when HomeKit has drifted from what a
-  device is actually doing (e.g. after someone used its own remote). It
-  can be run while Homebridge is running; a reset is queued and applied on
-  the next start, like renames and removals.
+  e.g. maxing out a heater's thermostat. Optionally exposes a resync
+  switch that clears what the plugin thinks a fan is doing without
+  sending any signals, for when the fan has been used from its own
+  remote. `broadlink-rm-learner` walks through all of it.
 - `broadlink-rm-learner`: new "Just show hex code" option that captures a
   single signal and prints it for copy/pasting, without saving anything.
 
