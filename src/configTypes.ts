@@ -50,77 +50,58 @@ export interface AdvancedAccessoryConfig {
   timeoutSeconds?: number;
 }
 
-// An extra signal that has to follow a mode being activated - e.g. maxing
-// out a heater's thermostat once heat mode is on.
-export interface FanFollowUpConfig {
-  name: string;
-  code: string;
-  pressCount: number;
-  // When false, it is only sent the first time the mode is activated after
-  // the fan is powered on, rather than on every activation. Never sent for
-  // a plain level change either way.
-  everyActivation?: boolean;
-}
-
-// Modes are either a plain on/off toggle, or a set of discrete levels.
-// Levels are 0-indexed: level 0 is the lowest, and on some fans that lowest
-// level *is* the mode being off (e.g. cooler off / 1 / 2 is levelCount 3).
-export type FanModeKind = 'onoff' | 'levels';
-
+// An extra on/off feature of a fan (cooling, ioniser, ...) - a plain
+// toggle, with no levels of its own.
 export interface FanModeConfig {
   name: string;
-  kind: FanModeKind;
-
-  // kind === 'onoff'. offCode omitted means onCode is a toggle.
-  onCode?: string;
+  // offCode omitted means onCode is a toggle.
+  onCode: string;
   offCode?: string;
-
-  // kind === 'levels'. downCode omitted means upCode is a single cycle
-  // button that wraps back to level 0 after the top level.
-  levelCount?: number;
-  upCode?: string;
-  downCode?: string;
-  exposeAsSlider?: boolean;
-
-  // Whether driving this mode also powers the whole fan on/off.
+  // Whether driving this feature also powers the whole fan on/off.
   powersOn?: boolean;
   powersOff?: boolean;
-
-  // Whether the fan restores this mode's setting after a power cycle.
-  remembersState?: boolean;
-
-  followUp?: FanFollowUpConfig;
-}
-
-export interface FanSwingConfig {
-  // The swing button. When offCode is omitted this one toggles swing.
-  code: string;
-  offCode?: string;
-  remembersState?: boolean;
-  powersOn?: boolean;
-  powersOff?: boolean;
-}
-
-// Omitted entirely when the fan has no dedicated power button and is
-// powered via a mode or swing instead. toggleCode and onCode/offCode are
-// mutually exclusive.
-export interface FanPowerConfig {
-  toggleCode?: string;
-  onCode?: string;
-  offCode?: string;
+  // Whether the fan still has this on after a power cycle.
+  remembers?: boolean;
 }
 
 export interface FanAccessoryConfig {
   name: string;
   rmDevice: string;
   pressIntervalSeconds?: number;
-  power?: FanPowerConfig;
-  swing?: FanSwingConfig;
-  // The fan's own speed control, driving the Fanv2 tile's RotationSpeed.
-  // Omitted for a single-speed fan, which has nothing to vary - its tile
-  // is then just on/off, powered by `power` or by one of the modes.
-  speed?: FanModeConfig;
-  // Any further modes (Heat, Cooler, ...), each exposed as its own service.
+
+  // Speed. Omitted (or 1) for a fan with nothing to vary, whose tile is
+  // then just on/off. speedDownCode omitted means speedUpCode is a single
+  // cycle button that wraps back round after the top speed.
+  speedCount?: number;
+  speedUpCode?: string;
+  speedDownCode?: string;
+  // Whether stepping the speed up powers the fan on, and whether its
+  // lowest speed is really the fan being off.
+  speedPowersOn?: boolean;
+  speedPowersOff?: boolean;
+  // Whether the fan comes back at its previous speed, rather than needing
+  // the speed button pressed to get going again.
+  speedResumes?: boolean;
+
+  // Swing. swingOffCode omitted means swingCode is a toggle.
+  swingCode?: string;
+  swingOffCode?: string;
+  swingRemembers?: boolean;
+  swingPowersOn?: boolean;
+  swingPowersOff?: boolean;
+
+  // Dedicated power button, if there is one. powerToggleCode and
+  // powerOnCode/powerOffCode are mutually exclusive.
+  powerToggleCode?: string;
+  powerOnCode?: string;
+  powerOffCode?: string;
+
+  // A signal sent every time the fan is turned on, e.g. maxing out a
+  // heater's thermostat.
+  onFollowUpName?: string;
+  onFollowUpCode?: string;
+  onFollowUpPressCount?: number;
+
   modes?: FanModeConfig[];
 }
 

@@ -117,7 +117,10 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       }
       // A single-speed fan has no speed control at all, so only a fan with
       // nothing to drive it whatsoever is worth skipping.
-      if (!fanConfig.speed && (fanConfig.modes ?? []).length === 0 && !fanConfig.power && !fanConfig.swing) {
+      const hasAnyControl = !!fanConfig.speedUpCode || !!fanConfig.swingCode
+        || !!fanConfig.powerToggleCode || !!fanConfig.powerOnCode || !!fanConfig.powerOffCode
+        || (fanConfig.modes ?? []).length > 0;
+      if (!hasAnyControl) {
         this.log.warn(`Skipping fan "${fanConfig.name}": nothing configured to control it`);
         continue;
       }
