@@ -50,6 +50,25 @@ export interface AdvancedAccessoryConfig {
   timeoutSeconds?: number;
 }
 
+export interface FanModeConfig {
+  name: string;
+  enterCode: string;
+  cycleCode?: string;
+  levelCount: number;
+  additionalEnterCode?: string;
+  additionalEnterRepeatCount?: number;
+}
+
+export interface FanAccessoryConfig {
+  name: string;
+  rmDevice: string;
+  offCode: string;
+  swingOnCode?: string;
+  swingOffCode?: string;
+  pressIntervalSeconds?: number;
+  modes: FanModeConfig[];
+}
+
 export interface TvAccessoryConfig {
   name: string;
   rmDevice: string;
@@ -73,6 +92,7 @@ export interface BlasterPlatformConfig extends PlatformConfig {
   accessories?: BasicAccessoryConfig[];
   advancedAccessories?: AdvancedAccessoryConfig[];
   dimmers?: DimmerAccessoryConfig[];
+  fans?: FanAccessoryConfig[];
   tvs?: TvAccessoryConfig[];
   ntfyTopic?: string;
   enableMqtt?: boolean;
