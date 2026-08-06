@@ -218,45 +218,182 @@
               "required": true,
               "description": "Must match the name of one of the configured RM devices exactly."
             },
-            "offCode": {
-              "title": "Off Signal",
-              "type": "string",
-              "required": true
-            },
-            "onCode": {
-              "title": "On Signal (leave empty if a mode's Enter Signal also turns the fan on)",
-              "type": "string",
-              "required": false
-            },
-            "swingOnCode": {
-              "title": "Swing Signal",
-              "type": "string",
-              "required": false
-            },
-            "swingOffCode": {
-              "title": "Swing Off Signal (leave empty if the Swing Signal is a toggle)",
-              "type": "string",
-              "required": false
-            },
-            "swingRemembersState": {
-              "title": "Fan Remembers Oscillation State",
-              "type": "boolean",
-              "default": false,
-              "required": false,
-              "description": "Enable if the fan keeps its last oscillation state across power cycles on its own. Leave off if it always comes back with oscillation off after being turned off."
-            },
             "pressIntervalSeconds": {
               "title": "Press Interval (seconds)",
               "type": "number",
               "minimum": 0,
               "default": 0.5,
               "required": false,
-              "description": "Delay between repeated presses when cycling speed or sending an extra signal on mode entry."
+              "description": "Delay between repeated presses when stepping through levels or sending a follow-up signal."
+            },
+            "power": {
+              "title": "Power Button",
+              "type": "object",
+              "required": false,
+              "description": "Leave empty if the fan has no dedicated power button and is powered by a mode or by swing instead.",
+              "properties": {
+                "toggleCode": {
+                  "title": "Power Signal (one button that toggles power)",
+                  "type": "string",
+                  "required": false
+                },
+                "onCode": {
+                  "title": "Power On Signal (only if on and off are separate buttons)",
+                  "type": "string",
+                  "required": false
+                },
+                "offCode": {
+                  "title": "Power Off Signal (only if on and off are separate buttons)",
+                  "type": "string",
+                  "required": false
+                }
+              }
+            },
+            "swing": {
+              "title": "Swing",
+              "type": "object",
+              "required": false,
+              "description": "Leave empty if this fan has no swing/oscillation function.",
+              "properties": {
+                "code": {
+                  "title": "Swing Signal",
+                  "type": "string",
+                  "required": true
+                },
+                "remembersState": {
+                  "title": "Fan Remembers Swing State",
+                  "type": "boolean",
+                  "default": false,
+                  "required": false,
+                  "description": "Enable if the fan keeps swinging after a power cycle on its own. When off, the swing signal is resent on power on to match what HomeKit shows."
+                },
+                "powersOn": {
+                  "title": "Turning Swing On Powers The Fan On",
+                  "type": "boolean",
+                  "default": false,
+                  "required": false
+                },
+                "powersOff": {
+                  "title": "Turning Swing Off Powers The Fan Off",
+                  "type": "boolean",
+                  "default": false,
+                  "required": false
+                }
+              }
+            },
+            "speed": {
+              "title": "Speed",
+              "type": "object",
+              "required": true,
+              "description": "The fan's own speed control, shown on the fan tile. Use kind \"onoff\" for a single-speed fan.",
+              "properties": {
+                "name": {
+                  "title": "Name",
+                  "type": "string",
+                  "required": true,
+                  "default": "Speed"
+                },
+                "kind": {
+                  "title": "Type",
+                  "type": "string",
+                  "required": true,
+                  "default": "levels",
+                  "oneOf": [
+                    { "title": "Levels", "enum": ["levels"] },
+                    { "title": "On/Off", "enum": ["onoff"] }
+                  ]
+                },
+                "onCode": {
+                  "title": "On Signal (on/off only)",
+                  "type": "string",
+                  "required": false
+                },
+                "offCode": {
+                  "title": "Off Signal (on/off only, leave empty if the On Signal toggles)",
+                  "type": "string",
+                  "required": false
+                },
+                "levelCount": {
+                  "title": "Number of Levels (levels only)",
+                  "type": "integer",
+                  "minimum": 1,
+                  "required": false,
+                  "description": "Count the lowest level too, which on some fans means off (e.g. off + 1 + 2 is 3)."
+                },
+                "upCode": {
+                  "title": "Level Up Signal (levels only, also used as the cycle button)",
+                  "type": "string",
+                  "required": false
+                },
+                "downCode": {
+                  "title": "Level Down Signal (levels only, leave empty if one button cycles)",
+                  "type": "string",
+                  "required": false
+                },
+                "powersOn": {
+                  "title": "Activating This Powers The Fan On",
+                  "type": "boolean",
+                  "default": false,
+                  "required": false
+                },
+                "powersOff": {
+                  "title": "Deactivating This Powers The Fan Off",
+                  "type": "boolean",
+                  "default": false,
+                  "required": false
+                },
+                "exclusive": {
+                  "title": "Exclusive Mode",
+                  "type": "boolean",
+                  "default": false,
+                  "required": false,
+                  "description": "Enable if turning this on switches the fan's other exclusive modes off (e.g. heat vs fan)."
+                },
+                "remembersOnReturn": {
+                  "title": "Resumes Its Level On Return",
+                  "type": "boolean",
+                  "default": false,
+                  "required": false,
+                  "description": "Exclusive level modes only. When off, the press that returns to this mode also moves it a level on."
+                },
+                "remembersState": {
+                  "title": "Fan Remembers This Setting",
+                  "type": "boolean",
+                  "default": false,
+                  "required": false,
+                  "description": "Enable if the fan restores this setting after a power cycle."
+                },
+                "followUp": {
+                  "title": "Follow-Up Signal",
+                  "type": "object",
+                  "required": false,
+                  "description": "An extra signal sent right after this is activated, e.g. maxing out a thermostat.",
+                  "properties": {
+                    "name": {
+                      "title": "Name",
+                      "type": "string",
+                      "required": true
+                    },
+                    "code": {
+                      "title": "Signal",
+                      "type": "string",
+                      "required": true
+                    },
+                    "pressCount": {
+                      "title": "Number of Presses",
+                      "type": "integer",
+                      "minimum": 1,
+                      "default": 1,
+                      "required": true
+                    }
+                  }
+                }
+              }
             },
             "modes": {
-              "title": "Modes",
+              "title": "Other Modes",
               "type": "array",
-              "minItems": 1,
+              "required": false,
               "items": {
                 "type": "object",
                 "properties": {
@@ -264,44 +401,109 @@
                     "title": "Name",
                     "type": "string",
                     "required": true,
-                    "description": "E.g. \"Speed\" for a simple fan, or \"Heat\"/\"Fan\" for a fan with separate modes."
+                    "description": "E.g. \"Heat\" or \"Cooler\". Shown in the Home app as \"<fan name> <mode name>\"."
                   },
-                  "enterCode": {
-                    "title": "Enter Signal",
+                  "kind": {
+                    "title": "Type",
                     "type": "string",
                     "required": true,
-                    "description": "Press to switch into this mode."
+                    "default": "onoff",
+                    "oneOf": [
+                      { "title": "On/Off", "enum": ["onoff"] },
+                      { "title": "Levels", "enum": ["levels"] }
+                    ]
                   },
-                  "cycleCode": {
-                    "title": "Cycle Signal (leave empty if the Enter Signal also cycles speed when already in this mode)",
+                  "onCode": {
+                    "title": "On Signal (on/off only)",
+                    "type": "string",
+                    "required": false
+                  },
+                  "offCode": {
+                    "title": "Off Signal (on/off only, leave empty if the On Signal toggles)",
                     "type": "string",
                     "required": false
                   },
                   "levelCount": {
-                    "title": "Number of Levels",
+                    "title": "Number of Levels (levels only)",
                     "type": "integer",
                     "minimum": 1,
-                    "required": true
+                    "required": false,
+                    "description": "Count the lowest level too, which on some fans means off (e.g. off + 1 + 2 is 3)."
                   },
-                  "resumesLastLevel": {
-                    "title": "Resumes Last-Used Level",
+                  "upCode": {
+                    "title": "Level Up Signal (levels only, also used as the cycle button)",
+                    "type": "string",
+                    "required": false
+                  },
+                  "downCode": {
+                    "title": "Level Down Signal (levels only, leave empty if one button cycles)",
+                    "type": "string",
+                    "required": false
+                  },
+                  "exposeAsSlider": {
+                    "title": "Expose As A Slider",
                     "type": "boolean",
                     "default": false,
                     "required": false,
-                    "description": "Enable if re-entering this mode resumes whatever level was last used, instead of always starting at level 1."
+                    "description": "Levels only. When off, this shows up as a plain switch: on goes to the top level, off to the lowest."
                   },
-                  "additionalEnterCode": {
-                    "title": "Additional Signal on Entry",
-                    "type": "string",
-                    "required": false,
-                    "description": "Optional signal sent automatically right after the Enter Signal, every time this mode is freshly entered (e.g. maxing out a target temperature)."
-                  },
-                  "additionalEnterRepeatCount": {
-                    "title": "Additional Signal Repeat Count",
-                    "type": "integer",
-                    "minimum": 1,
-                    "default": 1,
+                  "powersOn": {
+                    "title": "Activating This Powers The Fan On",
+                    "type": "boolean",
+                    "default": false,
                     "required": false
+                  },
+                  "powersOff": {
+                    "title": "Deactivating This Powers The Fan Off",
+                    "type": "boolean",
+                    "default": false,
+                    "required": false
+                  },
+                  "exclusive": {
+                    "title": "Exclusive Mode",
+                    "type": "boolean",
+                    "default": false,
+                    "required": false,
+                    "description": "Enable if turning this on switches the fan's other exclusive modes off (e.g. heat vs fan)."
+                  },
+                  "remembersOnReturn": {
+                    "title": "Resumes Its Level On Return",
+                    "type": "boolean",
+                    "default": false,
+                    "required": false,
+                    "description": "Exclusive level modes only. When off, the press that returns to this mode also moves it a level on."
+                  },
+                  "remembersState": {
+                    "title": "Fan Remembers This Setting",
+                    "type": "boolean",
+                    "default": false,
+                    "required": false,
+                    "description": "Enable if the fan restores this setting after a power cycle."
+                  },
+                  "followUp": {
+                    "title": "Follow-Up Signal",
+                    "type": "object",
+                    "required": false,
+                    "description": "An extra signal sent right after this mode is activated, e.g. maxing out a thermostat.",
+                    "properties": {
+                      "name": {
+                        "title": "Name",
+                        "type": "string",
+                        "required": true
+                      },
+                      "code": {
+                        "title": "Signal",
+                        "type": "string",
+                        "required": true
+                      },
+                      "pressCount": {
+                        "title": "Number of Presses",
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 1,
+                        "required": true
+                      }
+                    }
                   }
                 }
               }
@@ -596,26 +798,76 @@
       "items": [
         "fans[].name",
         "fans[].rmDevice",
-        "fans[].offCode",
-        "fans[].onCode",
-        "fans[].swingOnCode",
-        "fans[].swingOffCode",
-        "fans[].swingRemembersState",
         "fans[].pressIntervalSeconds",
+        {
+          "type": "fieldset",
+          "title": "Power Button",
+          "expandable": true,
+          "expanded": false,
+          "items": [
+            "fans[].power.toggleCode",
+            "fans[].power.onCode",
+            "fans[].power.offCode"
+          ]
+        },
+        {
+          "type": "fieldset",
+          "title": "Swing",
+          "expandable": true,
+          "expanded": false,
+          "items": [
+            "fans[].swing.code",
+            "fans[].swing.remembersState",
+            "fans[].swing.powersOn",
+            "fans[].swing.powersOff"
+          ]
+        },
+        {
+          "type": "fieldset",
+          "title": "Speed",
+          "expandable": true,
+          "expanded": false,
+          "items": [
+            "fans[].speed.name",
+            "fans[].speed.kind",
+            "fans[].speed.levelCount",
+            "fans[].speed.upCode",
+            "fans[].speed.downCode",
+            "fans[].speed.onCode",
+            "fans[].speed.offCode",
+            "fans[].speed.powersOn",
+            "fans[].speed.powersOff",
+            "fans[].speed.exclusive",
+            "fans[].speed.remembersOnReturn",
+            "fans[].speed.remembersState",
+            "fans[].speed.followUp.name",
+            "fans[].speed.followUp.code",
+            "fans[].speed.followUp.pressCount"
+          ]
+        },
         {
           "type": "array",
           "key": "fans[].modes",
-          "title": "Modes",
+          "title": "Other Modes",
           "expandable": true,
           "expanded": false,
           "items": [
             "fans[].modes[].name",
-            "fans[].modes[].enterCode",
-            "fans[].modes[].cycleCode",
+            "fans[].modes[].kind",
             "fans[].modes[].levelCount",
-            "fans[].modes[].resumesLastLevel",
-            "fans[].modes[].additionalEnterCode",
-            "fans[].modes[].additionalEnterRepeatCount"
+            "fans[].modes[].upCode",
+            "fans[].modes[].downCode",
+            "fans[].modes[].onCode",
+            "fans[].modes[].offCode",
+            "fans[].modes[].exposeAsSlider",
+            "fans[].modes[].powersOn",
+            "fans[].modes[].powersOff",
+            "fans[].modes[].exclusive",
+            "fans[].modes[].remembersOnReturn",
+            "fans[].modes[].remembersState",
+            "fans[].modes[].followUp.name",
+            "fans[].modes[].followUp.code",
+            "fans[].modes[].followUp.pressCount"
           ]
         }
       ]

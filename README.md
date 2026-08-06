@@ -26,7 +26,7 @@ hb-service add homebridge-broadlink-rm-blaster
 - **Simple on/off accessories** power on/off
 - **Advanced accessories** one press sends multiple signals in sequence, with a configurable timeout between them
 - **Dimmer lights** one signal per discrete brightness level
-- **Fans** speed control, optional swing, and optional extra modes (e.g. heat/cool), each with their own speed levels
+- **Fans** speed control, optional swing, and any number of extra modes (e.g. heat, cooler) as switches or sliders
 - **TVs** power on/off plus a usable remote in the iOS Remote app
 - **Temperature/humidity sensor** optionally expose sensor data
 - **ntfy.sh notifications** push notification when a RM fails to connect
