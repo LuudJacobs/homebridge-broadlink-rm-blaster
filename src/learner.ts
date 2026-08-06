@@ -16,9 +16,6 @@ import type {
   DimmerAccessoryConfig,
   FanAccessoryConfig,
   FanModeConfig,
-  FanModeKind,
-  FanPowerConfig,
-  FanSwingConfig,
   RmDeviceConfig,
   TvAccessoryConfig,
 } from './configTypes';
@@ -476,102 +473,37 @@ async function askYesNo(question: string, defaultYes = false): Promise<boolean> 
   return choice === 'y';
 }
 
-// What the user told us about a mode before any signals get learned - the
-// walkthrough collects every mode's shape first so it can show a summary
-// and confirm the whole set before asking anyone to press buttons.
-interface FanModeDraft {
-  name: string;
-  kind: FanModeKind;
-  levelCount?: number;
-}
-
-function describeMode(draft: FanModeDraft): string {
-  if (draft.kind === 'onoff') {
-    return `${draft.name}: on/off`;
-  }
-  return `${draft.name}: ${draft.levelCount} levels`;
-}
-
-// Learns every signal for one mode plus the follow-up questions that go
-// with it. Returns undefined if the user cancelled partway through.
-async function learnFanMode(
+// Learns a control that is either one toggle button or a separate pair.
+// Returns undefined if the user cancelled.
+async function learnTogglePair(
   client: BroadlinkClient,
   ip: string,
   settings: SignalSettings,
-  fanName: string,
-  draft: FanModeDraft,
-  isSpeed: boolean,
-): Promise<FanModeConfig | undefined> {
-  console.log(`\n--- ${draft.name} ---`);
-  const mode: FanModeConfig = { name: draft.name, kind: draft.kind };
-
-  if (draft.kind === 'onoff') {
-    const separate = await askYesNo(`Are "${draft.name}" on and off separate buttons? (no = one button toggles it)`);
-    const on = await learnRequiredSignal(client, ip, settings, separate ? `${draft.name} On` : draft.name);
-    if (on.status === 'cancelled') {
-      return undefined;
-    }
-    mode.onCode = on.hex;
-    if (separate) {
-      const off = await learnRequiredSignal(client, ip, settings, `${draft.name} Off`);
-      if (off.status === 'cancelled') {
-        return undefined;
-      }
-      mode.offCode = off.hex;
-    }
-    if (!isSpeed) {
-      console.log(`\nThis will show up in the Home app as "${fanName} ${draft.name}".`);
-    }
-    mode.powersOn = await askYesNo(`Does the fan turn on when you turn "${draft.name}" on?`);
-    mode.powersOff = await askYesNo(`Does the fan turn off when you turn "${draft.name}" off?`);
-  } else {
-    mode.levelCount = draft.levelCount;
-    const separate = await askYesNo(
-      `Are "${draft.name}" level up and level down separate buttons? (no = one button cycles through the levels)`,
-    );
-    const up = await learnRequiredSignal(client, ip, settings, separate ? `${draft.name} Level Up` : `${draft.name} Level`);
-    if (up.status === 'cancelled') {
-      return undefined;
-    }
-    mode.upCode = up.hex;
-    if (separate) {
-      const down = await learnRequiredSignal(client, ip, settings, `${draft.name} Level Down`);
-      if (down.status === 'cancelled') {
-        return undefined;
-      }
-      mode.downCode = down.hex;
-    }
-
-    if (isSpeed) {
-      console.log('\nSpeed is exposed as the fan tile\'s own speed slider.');
-    } else {
-      mode.exposeAsSlider = await askYesNo(
-        `Expose "${fanName} ${draft.name}" as a slider? (no = a plain switch: on goes to the top level, off to the lowest)`,
-      );
-    }
-    mode.powersOn = await askYesNo(`Does the fan turn on when you step "${draft.name}" up a level?`);
-    mode.powersOff = await askYesNo(`Does the fan turn off when you set "${draft.name}" to its lowest level?`);
+  label: string,
+  question: string,
+): Promise<{ onCode: string; offCode?: string } | undefined> {
+  const separate = await askYesNo(question);
+  const on = await learnRequiredSignal(client, ip, settings, separate ? `${label} On` : label);
+  if (on.status === 'cancelled') {
+    return undefined;
   }
-
-  if (await askYesNo(`Is there another button that has to be pressed after activating "${draft.name}"?`)) {
-    const followUpName = await askNonEmpty('\nName for that button: ');
-    const followUp = await learnRequiredSignal(client, ip, settings, followUpName);
-    if (followUp.status === 'cancelled') {
-      return undefined;
-    }
-    const pressCount = await askCount(`\nHow many times should "${followUpName}" be pressed? Minimum 1: `, 1);
-    const everyActivation = await askYesNo(
-      `Send "${followUpName}" every time "${draft.name}" is switched on? `
-      + '(no = only the first time after the fan is powered on)',
-    );
-    mode.followUp = { name: followUpName, code: followUp.hex, pressCount, everyActivation };
+  if (!separate) {
+    return { onCode: on.hex };
   }
-
-  mode.remembersState = await askYesNo(`Does the fan remember "${draft.name}"'s setting after a power cycle?`);
-  return mode;
+  const off = await learnRequiredSignal(client, ip, settings, `${label} Off`);
+  if (off.status === 'cancelled') {
+    return undefined;
+  }
+  return { onCode: on.hex, offCode: off.hex };
 }
 
-type PowerOutcome = { status: 'ok'; power?: FanPowerConfig } | { status: 'cancelled' };
+type PowerOutcome = { status: 'ok'; power?: FanPowerCodes } | { status: 'cancelled' };
+
+interface FanPowerCodes {
+  powerToggleCode?: string;
+  powerOnCode?: string;
+  powerOffCode?: string;
+}
 
 // A signal that can only be skipped when something else already covers
 // what it would have done.
@@ -588,9 +520,9 @@ async function learnPowerSignal(
   return learnRequiredSignal(client, ip, settings, label);
 }
 
-// A fan can have a dedicated power button even when a mode or swing
-// already powers it, so this is always offered. Each direction can only be
-// skipped when something else was already said to cover it.
+// A fan can have a dedicated power button even when a speed, feature or
+// swing button already powers it, so this is always offered. Each
+// direction can only be skipped when something else already covers it.
 async function learnPowerButton(
   client: BroadlinkClient,
   ip: string,
@@ -611,7 +543,7 @@ async function learnPowerButton(
     if (toggle.status === 'cancelled') {
       return { status: 'cancelled' };
     }
-    return { status: 'ok', power: toggle.status === 'skipped' ? undefined : { toggleCode: toggle.hex } };
+    return { status: 'ok', power: toggle.status === 'skipped' ? undefined : { powerToggleCode: toggle.hex } };
   }
 
   const on = await learnPowerSignal(client, ip, settings, 'Power On', onCovered);
@@ -623,12 +555,12 @@ async function learnPowerButton(
     return { status: 'cancelled' };
   }
 
-  const power: FanPowerConfig = {};
+  const power: FanPowerCodes = {};
   if (on.status === 'learned') {
-    power.onCode = on.hex;
+    power.powerOnCode = on.hex;
   }
   if (off.status === 'learned') {
-    power.offCode = off.hex;
+    power.powerOffCode = off.hex;
   }
   return { status: 'ok', power: Object.keys(power).length > 0 ? power : undefined };
 }
@@ -647,81 +579,98 @@ async function learnFan(
   const name = await askNonEmpty('\nName for this fan: ');
   const settings = await askSignalSettings();
 
-  // Swing.
-  let swing: FanSwingConfig | undefined;
-  if (await askYesNo('Does this fan have a swing/oscillation function?')) {
-    const separateSwing = await askYesNo(
-      'Are swing on and swing off separate buttons? (no = one button toggles swing)',
+  const item: FanAccessoryConfig = { name, rmDevice: rmDevice.name };
+
+  // Speeds.
+  const speedCount = await askCount('\nHow many speeds does this fan have? Minimum 1: ', 1);
+  if (speedCount > 1) {
+    item.speedCount = speedCount;
+    const separate = await askYesNo(
+      'Are speed up and speed down separate buttons? (no = one button cycles through the speeds)',
     );
-    const swingOn = await learnRequiredSignal(client, rmDevice.ip, settings, separateSwing ? 'Swing On' : 'Swing');
-    if (swingOn.status === 'cancelled') {
+    const up = await learnRequiredSignal(client, rmDevice.ip, settings, separate ? 'Speed Up' : 'Speed');
+    if (up.status === 'cancelled') {
       cancelled();
       return;
     }
-    swing = { code: swingOn.hex };
-    if (separateSwing) {
-      const swingOff = await learnRequiredSignal(client, rmDevice.ip, settings, 'Swing Off');
-      if (swingOff.status === 'cancelled') {
+    item.speedUpCode = up.hex;
+    if (separate) {
+      const down = await learnRequiredSignal(client, rmDevice.ip, settings, 'Speed Down');
+      if (down.status === 'cancelled') {
         cancelled();
         return;
       }
-      swing.offCode = swingOff.hex;
+      item.speedDownCode = down.hex;
     }
-    swing.remembersState = await askYesNo('Does the fan remember whether it was swinging after a power cycle?');
-    swing.powersOn = await askYesNo('Does the fan power on when swing is turned on?');
-    swing.powersOff = await askYesNo('Does the fan power off when swing is turned off?');
-  }
-
-  // Shape of every mode first, so the summary below is worth confirming.
-  const speedCount = await askCount('\nHow many speeds does this fan have? Minimum 1: ', 1);
-  // One speed means there is nothing to vary, so there's no speed button
-  // to learn - the fan is simply on or off, handled by its power button.
-  const drafts: FanModeDraft[] = speedCount > 1
-    ? [{ name: 'Speed', kind: 'levels', levelCount: speedCount }]
-    : [];
-  if (speedCount === 1) {
+    item.speedPowersOn = await askYesNo('Does pressing speed up turn the fan on?');
+    item.speedPowersOff = await askYesNo('Does the lowest speed turn the fan off?');
+    item.speedResumes = await askYesNo(
+      'When you turn the fan on, does it come back at the speed it was on? '
+      + '(no = you have to press the speed button to get it going)',
+    );
+  } else {
     console.log('\nOne speed, so there is no speed button to learn - the fan is just on or off.');
   }
 
-  let addMore = await askYesNo(
-    speedCount > 1
-      ? 'Does this fan have any other modes (e.g. Heat, Cooler)?'
-      : 'Does this fan have any modes (e.g. Heat, Cooler)?',
-  );
-  while (addMore) {
-    const modeName = await askNonEmpty('\nName for this mode: ');
-    const hasLevels = await askYesNo(`Does "${modeName}" have levels? (no = it is a plain on/off mode)`);
-    if (hasLevels) {
-      const levelCount = await askCount(
-        `\nHow many levels does "${modeName}" have? Count the lowest/off level too ` +
-        '(e.g. off + level 1 + level 2 is 3): ',
-        1,
-      );
-      drafts.push({ name: modeName, kind: 'levels', levelCount });
-    } else {
-      drafts.push({ name: modeName, kind: 'onoff' });
-    }
-
-    console.log(`\nSo far: ${drafts.map(describeMode).join('; ')}`);
-    addMore = await askYesNo('Add another mode?');
-  }
-
-  // Now learn the signals for each of them.
-  const learned: FanModeConfig[] = [];
-  for (const [index, draft] of drafts.entries()) {
-    const mode = await learnFanMode(client, rmDevice.ip, settings, name, draft, speedCount > 1 && index === 0);
-    if (!mode) {
+  // Swing.
+  if (await askYesNo('Does this fan have a swing/oscillation function?')) {
+    const swing = await learnTogglePair(
+      client,
+      rmDevice.ip,
+      settings,
+      'Swing',
+      'Are swing on and swing off separate buttons? (no = one button toggles swing)',
+    );
+    if (!swing) {
       cancelled();
       return;
     }
-    learned.push(mode);
+    item.swingCode = swing.onCode;
+    if (swing.offCode) {
+      item.swingOffCode = swing.offCode;
+    }
+    item.swingRemembers = await askYesNo('Does the fan still swing after a power cycle?');
+    item.swingPowersOn = await askYesNo('Does turning swing on power the fan on?');
+    item.swingPowersOff = await askYesNo('Does turning swing off power the fan off?');
   }
 
-  // Power. A fan may have a dedicated power button on top of whatever mode
-  // or swing button also powers it, so this is always offered - but only
-  // the directions something else already covers can be skipped.
-  const onCovered = !!swing?.powersOn || learned.some((mode) => mode.powersOn);
-  const offCovered = !!swing?.powersOff || learned.some((mode) => mode.powersOff);
+  // Extra on/off features.
+  const modes: FanModeConfig[] = [];
+  let addMore = await askYesNo('Does this fan have any other on/off features (e.g. Cooling, Ioniser)?');
+  while (addMore) {
+    const modeName = await askNonEmpty('\nName for this feature: ');
+    const learned = await learnTogglePair(
+      client,
+      rmDevice.ip,
+      settings,
+      modeName,
+      `Are "${modeName}" on and off separate buttons? (no = one button toggles it)`,
+    );
+    if (!learned) {
+      cancelled();
+      return;
+    }
+
+    const mode: FanModeConfig = { name: modeName, onCode: learned.onCode };
+    if (learned.offCode) {
+      mode.offCode = learned.offCode;
+    }
+    console.log(`\nThis will show up in the Home app as "${name} ${modeName}".`);
+    mode.powersOn = await askYesNo(`Does turning "${modeName}" on power the fan on?`);
+    mode.powersOff = await askYesNo(`Does turning "${modeName}" off power the fan off?`);
+    mode.remembers = await askYesNo(`Is "${modeName}" still on after a power cycle?`);
+    modes.push(mode);
+
+    console.log(`\nFeatures so far: ${modes.map((entry) => entry.name).join(', ')}`);
+    addMore = await askYesNo('Add another feature?');
+  }
+  if (modes.length > 0) {
+    item.modes = modes;
+  }
+
+  // Power. Only the directions nothing else already covers are required.
+  const onCovered = !!item.speedPowersOn || !!item.swingPowersOn || modes.some((mode) => mode.powersOn);
+  const offCovered = !!item.speedPowersOff || !!item.swingPowersOff || modes.some((mode) => mode.powersOff);
 
   if (!onCovered && !offCovered) {
     console.log('\nNothing else was said to control power, so this fan needs its own power button.');
@@ -735,25 +684,23 @@ async function learnFan(
     cancelled();
     return;
   }
-  const power = powerOutcome.power;
+  Object.assign(item, powerOutcome.power ?? {});
 
-  const modes = speedCount > 1 ? learned.slice(1) : learned;
-  const item: FanAccessoryConfig = { name, rmDevice: rmDevice.name };
-  if (speedCount > 1) {
-    item.speed = learned[0];
-  }
-  if (modes.length > 0) {
-    item.modes = modes;
-  }
-  if (power) {
-    item.power = power;
-  }
-  if (swing) {
-    item.swing = swing;
+  // A signal that has to follow every power on.
+  if (await askYesNo('Is there a button that has to be pressed every time the fan is turned on?')) {
+    const followUpName = await askNonEmpty('\nName for that button: ');
+    const followUp = await learnRequiredSignal(client, rmDevice.ip, settings, followUpName);
+    if (followUp.status === 'cancelled') {
+      cancelled();
+      return;
+    }
+    item.onFollowUpName = followUpName;
+    item.onFollowUpCode = followUp.hex;
+    item.onFollowUpPressCount = await askCount(`\nHow many times should "${followUpName}" be pressed? Minimum 1: `, 1);
   }
 
   // Only matters when something actually sends more than one signal in a row.
-  const needsInterval = learned.some((mode) => (mode.levelCount ?? 1) > 1 || mode.followUp) || !!swing;
+  const needsInterval = speedCount > 1 || !!item.onFollowUpCode || !!item.swingCode;
   if (needsInterval) {
     item.pressIntervalSeconds = await askTimeoutSeconds();
   }

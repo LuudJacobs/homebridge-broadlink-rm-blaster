@@ -8,16 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Fans: a new standalone accessory type (`Service.Fanv2`). A fan has a
-  speed control (levels or plain on/off), optional swing, and any number
-  of extra named modes (e.g. Heat, Cooler), each either on/off or
-  level-based and each exposed as its own properly labelled switch or
-  slider. Power can come from a dedicated button (single toggle, or
-  separate on/off), or from whichever mode or swing button actually powers
-  the fan - configured per fan, including which settings the fan restores
-  after a power cycle. Swing can be a single toggle or separate on/off
-  buttons, and a mode's follow-up signal can fire on every activation or
-  only the first after powering on. `broadlink-rm-learner` walks through
-  all of it.
+  speed (any number of speeds, driven by one cycle button or separate
+  up/down buttons), optional swing, and any number of extra on/off
+  features (cooling, ioniser, ...) each exposed as its own labelled
+  switch. Power can come from a dedicated button - one toggle, or separate
+  on/off - or from whichever speed, swing or feature button actually
+  powers the fan. A signal can be sent every time the fan is turned on,
+  e.g. maxing out a heater's thermostat. `broadlink-rm-learner` walks
+  through all of it.
 - `broadlink-rm-manager`, a new CLI to rename, remove, or reset configured
   accessories. Reset clears an accessory's remembered state back to off/0
   without sending any signals, for when HomeKit has drifted from what a
