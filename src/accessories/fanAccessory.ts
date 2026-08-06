@@ -72,6 +72,7 @@ export class FanAccessory {
   private readonly intervalMs: number;
   private readonly speedDebounceMs: number;
   private readonly speedCount: number;
+  private readonly modes: FanModeConfig[];
   private swingSwitchService?: Service;
   private speedDebounceTimer?: NodeJS.Timeout;
   private pendingSpeedPercent?: number;
@@ -85,6 +86,7 @@ export class FanAccessory {
     this.intervalMs = (this.config.pressIntervalSeconds ?? DEFAULT_PRESS_INTERVAL_SECONDS) * 1000;
     this.speedDebounceMs = (this.config.speedDebounceSeconds ?? DEFAULT_SPEED_DEBOUNCE_SECONDS) * 1000;
     this.speedCount = this.config.speedCount ?? 1;
+    this.modes = this.usableModes();
 
     // getService() returns the first match for a UUID regardless of
     // subtype, so find the fan by its lack of one.
@@ -112,7 +114,7 @@ export class FanAccessory {
         .onSet((value) => this.setSwingMode(value));
     }
 
-    for (const mode of this.config.modes ?? []) {
+    for (const mode of this.modes) {
       this.setUpModeService(mode);
     }
 
@@ -128,11 +130,45 @@ export class FanAccessory {
       this.setUpResyncService();
     }
 
-    const modeNames = (this.config.modes ?? []).map((mode) => mode.name);
+    const modeNames = this.modes.map((mode) => mode.name);
     this.platform.log.info(
       `Fan "${this.config.name}": ${this.speedCount} speed(s), swing ${this.config.swingCode ? 'yes' : 'no'}`
       + `${modeNames.length > 0 ? `, features: ${modeNames.join(', ')}` : ''}`,
     );
+  }
+
+  // A feature's name becomes its service subtype, and HomeKit rejects a
+  // second service of the same type without a unique one - so a nameless
+  // entry (an empty row left behind in the config UI, say) would take the
+  // whole accessory down. Drop anything unusable, loudly, rather than
+  // failing to load the fan at all.
+  private usableModes(): FanModeConfig[] {
+    const usable: FanModeConfig[] = [];
+    const seen = new Set<string>();
+
+    for (const mode of this.config.modes ?? []) {
+      const name = (mode?.name ?? '').trim();
+      if (!name) {
+        this.platform.log.warn(`Ignoring a feature on "${this.config.name}" with no name - remove the empty entry.`);
+        continue;
+      }
+      if (name === RESYNC_SUBTYPE || name === SWING_SUBTYPE) {
+        this.platform.log.warn(`Ignoring feature "${name}" on "${this.config.name}": that name is reserved.`);
+        continue;
+      }
+      if (seen.has(name)) {
+        this.platform.log.warn(`Ignoring a second feature called "${name}" on "${this.config.name}" - names must be unique.`);
+        continue;
+      }
+      if (!mode.onCode) {
+        this.platform.log.warn(`Ignoring feature "${name}" on "${this.config.name}": it has no On signal.`);
+        continue;
+      }
+      seen.add(name);
+      usable.push({ ...mode, name });
+    }
+
+    return usable;
   }
 
   // Extra services on a bridged accessory are labelled off ConfiguredName,
@@ -384,7 +420,7 @@ export class FanAccessory {
   }
 
   private async powerViaModeOrSwing(on: boolean): Promise<void> {
-    const mode = (this.config.modes ?? []).find((candidate) => (on ? candidate.powersOn : candidate.powersOff));
+    const mode = this.modes.find((candidate) => (on ? candidate.powersOn : candidate.powersOff));
     if (mode) {
       await this.send(on ? mode.onCode : (mode.offCode ?? mode.onCode));
       this.setModeState(mode, on);
@@ -420,7 +456,7 @@ export class FanAccessory {
     if (!this.config.swingRemembers) {
       this.accessory.context.swingOn = false;
     }
-    for (const mode of this.config.modes ?? []) {
+    for (const mode of this.modes) {
       if (!mode.remembers) {
         this.setModeState(mode, false);
       }
@@ -602,7 +638,7 @@ export class FanAccessory {
       this.swingSwitchService
         ?.updateCharacteristic(this.platform.Characteristic.On, !!this.accessory.context.swingOn);
     }
-    for (const mode of this.config.modes ?? []) {
+    for (const mode of this.modes) {
       this.modeServices.get(mode.name)
         ?.updateCharacteristic(this.platform.Characteristic.On, this.isModeOn(mode));
     }
