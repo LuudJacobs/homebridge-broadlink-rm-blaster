@@ -691,7 +691,10 @@ async function learnFan(
   Object.assign(item, powerOutcome.power ?? {});
 
   // A signal that has to follow every power on.
-  if (await askYesNo('Is there a button that has to be pressed every time the fan is turned on?')) {
+  if (await askYesNo(
+    'When the fan is turned on, is there a button that has to be pressed, possibly more than once? '
+    + '(e.g. to set a thermostat)',
+  )) {
     const followUpName = await askNonEmpty('\nName for that button: ');
     const followUp = await learnRequiredSignal(client, rmDevice.ip, settings, followUpName);
     if (followUp.status === 'cancelled') {
