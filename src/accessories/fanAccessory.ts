@@ -149,7 +149,8 @@ export class FanAccessory {
     for (const mode of this.config.modes ?? []) {
       const name = (mode?.name ?? '').trim();
       if (!name) {
-        this.platform.log.warn(`Ignoring a feature on "${this.config.name}" with no name - remove the empty entry.`);
+        // A blank row left behind by the config form, not a mistake.
+        this.platform.log.debug(`Ignoring an empty feature on "${this.config.name}" - remove the blank row.`);
         continue;
       }
       if (name === RESYNC_SUBTYPE || name === SWING_SUBTYPE) {

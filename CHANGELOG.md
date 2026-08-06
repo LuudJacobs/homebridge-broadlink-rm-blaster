@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   single signal and prints it for copy/pasting, without saving anything.
 
 ### Fixed
+- Blank rows left behind in any accessory list by saving the Config UI
+  form no longer produce warnings about accessories named "undefined".
+  They are skipped quietly, with a note only when debug logging is on.
 - Fans: an extra on/off feature with no name took the whole accessory
   down on startup, which could happen after editing a fan in the Config
   UI left an empty row behind. Unusable features - nameless, duplicated,

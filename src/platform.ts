@@ -66,11 +66,25 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     this.accessories.push(accessory);
   }
 
+  // Saving the Config UI form can leave a blank row behind in any of the
+  // accessory arrays. That is the form's doing rather than a mistake worth
+  // shouting about, so skip anything with no name and say so only in debug.
+  private isBlankEntry(name: string | undefined, kind: string): boolean {
+    if (name && name.trim()) {
+      return false;
+    }
+    this.log.debug(`Ignoring an empty ${kind} entry - remove the blank row from your config.`);
+    return true;
+  }
+
   private discoverAccessories(): void {
     const config = this.config as BlasterPlatformConfig;
     this.activeUuids.clear();
 
     for (const accessoryConfig of config.accessories ?? []) {
+      if (this.isBlankEntry(accessoryConfig?.name, 'accessory')) {
+        continue;
+      }
       const ip = this.resolveRmDeviceIp(config, accessoryConfig.rmDevice);
       if (!ip) {
         this.log.warn(
@@ -87,6 +101,9 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     }
 
     for (const advancedConfig of config.advancedAccessories ?? []) {
+      if (this.isBlankEntry(advancedConfig?.name, 'advanced accessory')) {
+        continue;
+      }
       const ip = this.resolveRmDeviceIp(config, advancedConfig.rmDevice);
       if (!ip) {
         this.log.warn(
@@ -107,6 +124,9 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     }
 
     for (const fanConfig of config.fans ?? []) {
+      if (this.isBlankEntry(fanConfig?.name, 'fan')) {
+        continue;
+      }
       const ip = this.resolveRmDeviceIp(config, fanConfig.rmDevice);
       if (!ip) {
         this.log.warn(`Skipping fan "${fanConfig.name}": no RM device named "${fanConfig.rmDevice}" configured`);
@@ -130,6 +150,9 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     }
 
     for (const dimmerConfig of config.dimmers ?? []) {
+      if (this.isBlankEntry(dimmerConfig?.name, 'dimmer')) {
+        continue;
+      }
       const ip = this.resolveRmDeviceIp(config, dimmerConfig.rmDevice);
       if (!ip) {
         this.log.warn(`Skipping dimmer "${dimmerConfig.name}": no RM device named "${dimmerConfig.rmDevice}" configured`);
@@ -150,6 +173,9 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     this.publishTvAccessories(config);
 
     for (const rmDevice of config.rmDevices ?? []) {
+      if (this.isBlankEntry(rmDevice?.name, 'RM device')) {
+        continue;
+      }
       const showInHomeKit = !!rmDevice.enableTemperatureHumidity;
       const publishToMqtt = !!rmDevice.enableMqttPublish;
       if (!showInHomeKit && !publishToMqtt) {
@@ -192,6 +218,9 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     const externalAccessories: PlatformAccessory[] = [];
 
     for (const tvConfig of config.tvs ?? []) {
+      if (this.isBlankEntry(tvConfig?.name, 'TV')) {
+        continue;
+      }
       const ip = this.resolveRmDeviceIp(config, tvConfig.rmDevice);
       if (!ip) {
         this.log.warn(`Skipping TV "${tvConfig.name}": no RM device named "${tvConfig.rmDevice}" configured`);
