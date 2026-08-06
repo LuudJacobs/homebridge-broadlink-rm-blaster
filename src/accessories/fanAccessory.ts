@@ -12,6 +12,7 @@ const RESYNC_RESET_DELAY_MS = 1000;
 
 // Kept distinct from a feature's subtype, which is just its name.
 const RESYNC_SUBTYPE = '__resync';
+const SWING_SUBTYPE = '__swing';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -71,6 +72,7 @@ export class FanAccessory {
   private readonly intervalMs: number;
   private readonly speedDebounceMs: number;
   private readonly speedCount: number;
+  private swingSwitchService?: Service;
   private speedDebounceTimer?: NodeJS.Timeout;
   private pendingSpeedPercent?: number;
 
@@ -114,6 +116,13 @@ export class FanAccessory {
       this.setUpModeService(mode);
     }
 
+    // The Home app only offers its built-in oscillate control while the
+    // accessory is nothing but a fan; as soon as it carries extra
+    // services that control disappears, so put swing on a switch too.
+    if (this.config.swingCode && ((this.config.modes ?? []).length > 0 || this.config.resyncSwitch)) {
+      this.setUpSwingSwitch();
+    }
+
     if (this.config.resyncSwitch) {
       this.setUpResyncService();
     }
@@ -141,6 +150,22 @@ export class FanAccessory {
     service.getCharacteristic(this.platform.Characteristic.On)
       .onGet(() => this.isModeOn(mode))
       .onSet((value) => this.setModeOn(mode, !!value));
+  }
+
+  private setUpSwingSwitch(): void {
+    const label = `${this.config.name} Swing`;
+    const service = this.accessory.getServiceById(this.platform.Service.Switch, SWING_SUBTYPE)
+      ?? this.accessory.addService(this.platform.Service.Switch, label, SWING_SUBTYPE);
+    service.setCharacteristic(this.platform.Characteristic.Name, label);
+    if (!service.testCharacteristic(this.platform.Characteristic.ConfiguredName)) {
+      service.addCharacteristic(this.platform.Characteristic.ConfiguredName);
+    }
+    service.setCharacteristic(this.platform.Characteristic.ConfiguredName, label);
+    this.swingSwitchService = service;
+
+    service.getCharacteristic(this.platform.Characteristic.On)
+      .onGet(() => !!this.accessory.context.swingOn)
+      .onSet((value) => this.applySwing(!!value));
   }
 
   // A momentary switch that forgets everything the plugin assumes about
@@ -536,11 +561,15 @@ export class FanAccessory {
   }
 
   private async setSwingMode(value: CharacteristicValue): Promise<void> {
+    await this.applySwing(value === this.platform.Characteristic.SwingMode.SWING_ENABLED);
+  }
+
+  // Shared by the fan's own oscillate control and the bonus swing switch.
+  private async applySwing(on: boolean): Promise<void> {
     const swingCode = this.config.swingCode;
     if (!swingCode) {
       return;
     }
-    const on = value === this.platform.Characteristic.SwingMode.SWING_ENABLED;
     if (!!this.accessory.context.swingOn === on) {
       return;
     }
@@ -569,6 +598,8 @@ export class FanAccessory {
     }
     if (this.config.swingCode) {
       this.fanService.updateCharacteristic(this.platform.Characteristic.SwingMode, this.getSwingMode());
+      this.swingSwitchService
+        ?.updateCharacteristic(this.platform.Characteristic.On, !!this.accessory.context.swingOn);
     }
     for (const mode of this.config.modes ?? []) {
       this.modeServices.get(mode.name)
