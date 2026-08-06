@@ -118,8 +118,9 @@ export class FanAccessory {
 
     // The Home app only offers its built-in oscillate control while the
     // accessory is nothing but a fan; as soon as it carries extra
-    // services that control disappears, so put swing on a switch too.
-    if (this.config.swingCode && ((this.config.modes ?? []).length > 0 || this.config.resyncSwitch)) {
+    // services that control disappears, so swing can be put on a switch
+    // as well.
+    if (this.config.swingCode && this.config.swingSwitch) {
       this.setUpSwingSwitch();
     }
 

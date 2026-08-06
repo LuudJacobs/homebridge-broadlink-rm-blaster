@@ -717,6 +717,16 @@ async function learnFan(
     + 'without sending any signals - handy after using the fan\'s own remote',
   );
 
+  // The Home app hides its built-in oscillate control as soon as an
+  // accessory carries anything beyond the fan itself, so give swing its
+  // own switch in that case. It stays a checkbox in the config UI, so it
+  // can be added or removed later without relearning anything.
+  if (item.swingCode && (modes.length > 0 || item.resyncSwitch)) {
+    item.swingSwitch = true;
+    console.log(`\nSwing will also get its own switch ("${name} Swing"), since the Home app hides its built-in `
+      + 'oscillate control once an accessory has other switches.');
+  }
+
   pendingItems.push({ type: 'fans', item });
   console.log(`\n"${name}" queued to be saved.`);
 }
