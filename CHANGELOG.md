@@ -7,15 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Unreleased
 
 ### Added
-- Fans: a new standalone accessory type (`Service.Fanv2`) with speed
-  control, optional swing, and optional named modes (e.g. Heat/Fan) each
-  with their own speed levels - a bonus mode-select switch per mode when
-  there's more than one. `broadlink-rm-learner` can learn these too.
-- Fans: optional On signal, for fans whose speed/mode buttons don't turn
-  the fan on by themselves - a separate dedicated power button.
-- Fans: optional "fan remembers oscillation state" and per-mode "resumes
-  last-used level" settings, so the learner can ask about each fan's real
-  behavior instead of always assuming the worst case.
+- Fans: a new standalone accessory type (`Service.Fanv2`). A fan has a
+  speed control (levels or plain on/off), optional swing, and any number
+  of extra named modes (e.g. Heat, Cooler), each either on/off or
+  level-based and each exposed as its own properly labelled switch or
+  slider. Power can come from a dedicated button (single toggle, or
+  separate on/off), or from whichever mode or swing button actually powers
+  the fan - configured per fan, including which settings the fan restores
+  after a power cycle. Modes can be marked exclusive, so turning one on
+  switches the others off (heat vs fan), including fans where the press
+  that returns to a mode also moves it a level on.
+  `broadlink-rm-learner` walks through all of it.
 - `broadlink-rm-learner`: new "Just show hex code" option that captures a
   single signal and prints it for copy/pasting, without saving anything.
 
@@ -24,12 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   UI X form and the learner CLI.
 - `broadlink-rm-learner`'s menu order now matches the Config UI X form's
   section order (Simple On/Off, Advanced, Fan, Dimmer, TV).
-
-### Fixed
-- Fans: turning the fan on now reasserts the Swing signal if the Swing
-  switch is on, since many remote fans forget their oscillation state
-  whenever they're power-cycled even though our own switch still shows it
-  as on.
 
 ## [1.5.0] - 2026-08-06
 
