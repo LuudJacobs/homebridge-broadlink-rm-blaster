@@ -115,8 +115,10 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
         this.log.warn(`Skipping fan "${fanConfig.name}": no RM device named "${fanConfig.rmDevice}" configured`);
         continue;
       }
-      if (!fanConfig.speed) {
-        this.log.warn(`Skipping fan "${fanConfig.name}": no speed configured`);
+      // A single-speed fan has no speed control at all, so only a fan with
+      // nothing to drive it whatsoever is worth skipping.
+      if (!fanConfig.speed && (fanConfig.modes ?? []).length === 0 && !fanConfig.power && !fanConfig.swing) {
+        this.log.warn(`Skipping fan "${fanConfig.name}": nothing configured to control it`);
         continue;
       }
 

@@ -289,8 +289,8 @@
             "speed": {
               "title": "Speed",
               "type": "object",
-              "required": true,
-              "description": "The fan's own speed control, shown on the fan tile. Use kind \"onoff\" for a single-speed fan.",
+              "required": false,
+              "description": "The fan's own speed control, shown on the fan tile. Leave empty for a single-speed fan, which is just on/off.",
               "properties": {
                 "name": {
                   "title": "Name",
@@ -346,20 +346,6 @@
                   "type": "boolean",
                   "default": false,
                   "required": false
-                },
-                "exclusive": {
-                  "title": "Exclusive Mode",
-                  "type": "boolean",
-                  "default": false,
-                  "required": false,
-                  "description": "Enable if turning this on switches the fan's other exclusive modes off (e.g. heat vs fan)."
-                },
-                "remembersOnReturn": {
-                  "title": "Resumes Its Level On Return",
-                  "type": "boolean",
-                  "default": false,
-                  "required": false,
-                  "description": "Exclusive level modes only. When off, the press that returns to this mode also moves it a level on."
                 },
                 "remembersState": {
                   "title": "Fan Remembers This Setting",
@@ -470,20 +456,6 @@
                     "type": "boolean",
                     "default": false,
                     "required": false
-                  },
-                  "exclusive": {
-                    "title": "Exclusive Mode",
-                    "type": "boolean",
-                    "default": false,
-                    "required": false,
-                    "description": "Enable if turning this on switches the fan's other exclusive modes off (e.g. heat vs fan)."
-                  },
-                  "remembersOnReturn": {
-                    "title": "Resumes Its Level On Return",
-                    "type": "boolean",
-                    "default": false,
-                    "required": false,
-                    "description": "Exclusive level modes only. When off, the press that returns to this mode also moves it a level on."
                   },
                   "remembersState": {
                     "title": "Fan Remembers This Setting",
@@ -857,8 +829,6 @@
             "fans[].speed.offCode",
             "fans[].speed.powersOn",
             "fans[].speed.powersOff",
-            "fans[].speed.exclusive",
-            "fans[].speed.remembersOnReturn",
             "fans[].speed.remembersState",
             "fans[].speed.followUp.name",
             "fans[].speed.followUp.code",
@@ -883,8 +853,6 @@
             "fans[].modes[].exposeAsSlider",
             "fans[].modes[].powersOn",
             "fans[].modes[].powersOff",
-            "fans[].modes[].exclusive",
-            "fans[].modes[].remembersOnReturn",
             "fans[].modes[].remembersState",
             "fans[].modes[].followUp.name",
             "fans[].modes[].followUp.code",
