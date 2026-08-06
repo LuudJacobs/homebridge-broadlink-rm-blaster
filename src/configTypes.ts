@@ -104,6 +104,11 @@ export interface FanAccessoryConfig {
 
   modes?: FanModeConfig[];
 
+  // How long to wait for the speed slider to settle before acting on it.
+  // HomeKit sends a value for every intermediate position while a slider
+  // is dragged, and each one would otherwise fire its own presses.
+  speedDebounceSeconds?: number;
+
   // Exposes a momentary switch that clears what the plugin thinks the fan
   // is doing, without sending any signals - for when the fan has been used
   // from its own remote and HomeKit no longer matches reality.

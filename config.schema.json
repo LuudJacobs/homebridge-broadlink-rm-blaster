@@ -402,6 +402,14 @@
               "default": false,
               "required": false,
               "description": "Exposes a switch that clears what the plugin thinks this fan is doing, without sending any signals. Useful after the fan has been used from its own remote."
+            },
+            "speedDebounceSeconds": {
+              "title": "Speed Slider Debounce (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "default": 0.5,
+              "required": false,
+              "description": "How long to wait for the speed slider to settle before acting on it. HomeKit sends a value for every position a slider passes through while being dragged."
             }
           }
         }
@@ -711,6 +719,7 @@
         "fans[].onFollowUpCode",
         "fans[].onFollowUpPressCount",
         "fans[].pressIntervalSeconds",
+        "fans[].speedDebounceSeconds",
         "fans[].resyncSwitch",
         {
           "type": "array",
