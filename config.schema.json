@@ -113,7 +113,7 @@
         }
       },
       "accessories": {
-        "title": "Basic Accessories",
+        "title": "Simple On/Off Accessories",
         "type": "array",
         "items": {
           "type": "object",
@@ -222,6 +222,11 @@
               "title": "Off Signal",
               "type": "string",
               "required": true
+            },
+            "onCode": {
+              "title": "On Signal (leave empty if a mode's Enter Signal also turns the fan on)",
+              "type": "string",
+              "required": false
             },
             "swingOnCode": {
               "title": "Swing Signal",
@@ -526,7 +531,7 @@
     {
       "type": "array",
       "key": "accessories",
-      "title": "Basic Accessories",
+      "title": "Simple On/Off Accessories",
       "expandable": true,
       "expanded": false,
       "items": [
@@ -578,6 +583,7 @@
         "fans[].name",
         "fans[].rmDevice",
         "fans[].offCode",
+        "fans[].onCode",
         "fans[].swingOnCode",
         "fans[].swingOffCode",
         "fans[].pressIntervalSeconds",
