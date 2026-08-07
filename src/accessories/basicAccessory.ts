@@ -8,6 +8,19 @@ export function selectPowerCode(config: Pick<BasicAccessoryConfig, 'powerOnCode'
   return on ? config.powerOnCode : (config.powerOffCode ?? config.powerOnCode);
 }
 
+// Turning off with no Power Off Signal re-sends Power On, which only turns
+// anything off if that signal is a toggle. Name it for what was actually
+// sent, so a device that ignores it isn't a mystery in the log.
+export function powerSignalName(
+  config: Pick<BasicAccessoryConfig, 'powerOnCode' | 'powerOffCode'>,
+  on: boolean,
+): string {
+  if (on) {
+    return 'Power On';
+  }
+  return config.powerOffCode ? 'Power Off' : 'Power On (reused to turn off, no Power Off Signal configured)';
+}
+
 export class BasicAccessory {
   private readonly service: Service;
   private readonly mqtt: MqttLink;
@@ -70,7 +83,7 @@ export class BasicAccessory {
       await this.platform.broadlinkClient.sendCode(this.ip, code);
       this.accessory.context.on = on;
       this.mqtt.publishState(on);
-      this.platform.log.info(`Sent ${on ? 'Power On' : 'Power Off'} to ${this.config.name}`);
+      this.platform.log.info(`Sent ${powerSignalName(this.config, on)} to ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
       const { HapStatusError, HAPStatus } = this.platform.api.hap;

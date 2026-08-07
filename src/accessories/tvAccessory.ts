@@ -3,7 +3,7 @@ import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 import type { BroadlinkRMBlasterPlatform } from '../platform';
 import { MqttLink } from '../mqttLink';
 import type { TvAccessoryConfig } from '../configTypes';
-import { selectPowerCode } from './basicAccessory';
+import { powerSignalName, selectPowerCode } from './basicAccessory';
 
 export interface RemoteKeyResolution {
   signalName: string;
@@ -132,7 +132,7 @@ export class TvAccessory {
   private async setActive(value: CharacteristicValue): Promise<void> {
     const on = value === this.platform.Characteristic.Active.ACTIVE;
     const code = selectPowerCode(this.config, on);
-    await this.send(code, on ? 'Power On' : 'Power Off');
+    await this.send(code, powerSignalName(this.config, on));
     this.accessory.context.active = on;
     this.mqtt.publishState(on);
   }
