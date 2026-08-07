@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   triggered.
 
 ### Fixed
+- Turning a simple accessory or TV off with no Power Off Signal configured
+  logged "Sent Power Off" while actually re-sending Power On, which only
+  turns anything off if that signal is a toggle. The log now names what
+  was really sent.
 - Sliding a fan on fired a signal the instant HomeKit reported it active,
   while the slider was still moving - on a fan whose speed button is also
   its power button, that press is part of the very sequence the slider is
