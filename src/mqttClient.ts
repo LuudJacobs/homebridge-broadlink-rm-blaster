@@ -62,15 +62,34 @@ export class MqttBridge {
   // `deviceTopic` is just the accessory's own part; the base topic is
   // whatever the MQTT settings already define, so moving it moves
   // everything at once.
-  subscribeToDevice(deviceTopic: string, handler: (payload: string) => void): boolean {
+  private deviceTopic(deviceTopic: string): string {
+    return `${this.baseTopic}/${deviceTopic.replace(/^\/+|\/+$/g, '')}`;
+  }
+
+  // Commands arrive on <topic>/set, leaving <topic> itself free to carry
+  // the accessory's state - so a controller can watch one and drive the
+  // other without hearing its own commands back.
+  subscribeToCommands(topic: string, handler: (payload: string) => void): boolean {
     if (!this.client) {
       return false;
     }
-    const topic = `${this.baseTopic}/${deviceTopic.replace(/^\/+|\/+$/g, '')}`;
-    this.handlers.set(topic, handler);
-    this.subscribeToTopic(topic);
-    this.log.info(`Listening for MQTT commands on ${topic}`);
+    const commandTopic = `${this.deviceTopic(topic)}/set`;
+    this.handlers.set(commandTopic, handler);
+    this.subscribeToTopic(commandTopic);
+    this.log.info(`Listening for MQTT commands on ${commandTopic}`);
     return true;
+  }
+
+  publishState(topic: string, on: boolean): void {
+    if (!this.client) {
+      return;
+    }
+    const stateTopic = this.deviceTopic(topic);
+    this.client.publish(stateTopic, JSON.stringify({ state: on ? 'ON' : 'OFF' }), { retain: this.retain }, (error) => {
+      if (error) {
+        this.log.warn(`Failed to publish MQTT state to ${stateTopic}: ${error.message}`);
+      }
+    });
   }
 
   private subscribeToTopic(topic: string): void {

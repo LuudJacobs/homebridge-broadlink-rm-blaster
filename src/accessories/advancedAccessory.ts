@@ -2,6 +2,7 @@ import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 
 import type { BroadlinkRMBlasterPlatform } from '../platform';
 import type { AdvancedAccessoryConfig } from '../configTypes';
+import { MqttLink } from '../mqttLink';
 
 const DEFAULT_TIMEOUT_SECONDS = 0.5;
 
@@ -19,6 +20,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 export class AdvancedAccessory {
+  private readonly mqtt: MqttLink;
+
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
@@ -31,6 +34,13 @@ export class AdvancedAccessory {
     service.getCharacteristic(this.platform.Characteristic.On)
       .onGet(() => this.getOn())
       .onSet((value) => this.setOn(value));
+
+    this.mqtt = new MqttLink(platform, config.name, config, async (command) => {
+      if (command.state !== undefined) {
+        await this.setOn(command.state === 'on');
+        service.updateCharacteristic(this.platform.Characteristic.On, this.getOn());
+      }
+    });
   }
 
   // Same as every other blaster accessory - no feedback from the device
@@ -50,6 +60,7 @@ export class AdvancedAccessory {
     try {
       await this.sendSequence();
       this.accessory.context.on = true;
+      this.mqtt.publishState(true);
       this.platform.log.info(`Sent signal sequence to ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
@@ -66,12 +77,14 @@ export class AdvancedAccessory {
     if (!this.config.offCode) {
       // Momentary trigger - nothing to send, just reflect the state.
       this.accessory.context.on = false;
+      this.mqtt.publishState(false);
       return;
     }
 
     try {
       await this.platform.broadlinkClient.sendCode(this.ip, this.config.offCode);
       this.accessory.context.on = false;
+      this.mqtt.publishState(false);
       this.platform.log.info(`Sent Off to ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
@@ -95,6 +108,7 @@ export class AdvancedAccessory {
   private scheduleAutoReset(): void {
     setTimeout(() => {
       this.accessory.context.on = false;
+      this.mqtt.publishState(false);
       this.accessory.getService(this.platform.Service.Switch)
         ?.updateCharacteristic(this.platform.Characteristic.On, false);
     }, RESET_DELAY_MS);

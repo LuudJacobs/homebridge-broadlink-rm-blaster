@@ -15,6 +15,11 @@ export interface BasicAccessoryConfig {
   accessoryType: BasicAccessoryType;
   powerOnCode: string;
   powerOffCode?: string;
+  // Listens for commands on <mqttBaseTopic>/<mqttTopic>/set and publishes
+  // its on/off state to <mqttBaseTopic>/<mqttTopic>. Needs the platform's
+  // MQTT settings to be filled in and enabled.
+  mqttSubscribe?: boolean;
+  mqttTopic?: string;
 }
 
 export interface BrightnessLevelConfig {
@@ -36,6 +41,11 @@ export interface DimmerAccessoryConfig {
   hundredPercentCode: string;
   debounceSeconds?: number;
   levels: BrightnessLevelConfig[];
+  // Listens for commands on <mqttBaseTopic>/<mqttTopic>/set and publishes
+  // its on/off state to <mqttBaseTopic>/<mqttTopic>. Needs the platform's
+  // MQTT settings to be filled in and enabled.
+  mqttSubscribe?: boolean;
+  mqttTopic?: string;
 }
 
 export interface AdvancedSignalConfig {
@@ -48,6 +58,11 @@ export interface AdvancedAccessoryConfig {
   signals: AdvancedSignalConfig[];
   offCode?: string;
   timeoutSeconds?: number;
+  // Listens for commands on <mqttBaseTopic>/<mqttTopic>/set and publishes
+  // its on/off state to <mqttBaseTopic>/<mqttTopic>. Needs the platform's
+  // MQTT settings to be filled in and enabled.
+  mqttSubscribe?: boolean;
+  mqttTopic?: string;
 }
 
 // An extra on/off feature of a fan (cooling, ioniser, ...) - a plain
@@ -89,6 +104,9 @@ export interface FanAccessoryConfig {
   swingRemembers?: boolean;
   swingPowersOn?: boolean;
   swingPowersOff?: boolean;
+  // Start the fan oscillating whenever it is turned on, unless it already
+  // is. Sent once the speed has settled.
+  swingOnPowerOn?: boolean;
 
   // Dedicated power button, if there is one. powerToggleCode and
   // powerOnCode/powerOffCode are mutually exclusive.
@@ -104,8 +122,9 @@ export interface FanAccessoryConfig {
 
   modes?: FanModeConfig[];
 
-  // Listens for commands on <mqttBaseTopic>/<mqttTopic>. Needs the
-  // platform's MQTT settings to be filled in and enabled.
+  // Listens for commands on <mqttBaseTopic>/<mqttTopic>/set and publishes
+  // its on/off state to <mqttBaseTopic>/<mqttTopic>. Needs the platform's
+  // MQTT settings to be filled in and enabled.
   mqttSubscribe?: boolean;
   mqttTopic?: string;
 
@@ -142,6 +161,11 @@ export interface TvAccessoryConfig {
   infoCode?: string;
   backCode?: string;
   exitCode?: string;
+  // Listens for commands on <mqttBaseTopic>/<mqttTopic>/set and publishes
+  // its on/off state to <mqttBaseTopic>/<mqttTopic>. Needs the platform's
+  // MQTT settings to be filled in and enabled.
+  mqttSubscribe?: boolean;
+  mqttTopic?: string;
 }
 
 export interface BlasterPlatformConfig extends PlatformConfig {

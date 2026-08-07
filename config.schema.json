@@ -170,6 +170,25 @@
               "title": "Power Off Signal (leave empty to use Power On Signal)",
               "type": "string",
               "required": false
+            },
+            "mqttSubscribe": {
+              "title": "Control via MQTT",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Listen for commands and publish this accessory's on/off state. Requires the MQTT settings above to be enabled and filled in.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true;"
+              }
+            },
+            "mqttTopic": {
+              "title": "MQTT Topic",
+              "type": "string",
+              "required": false,
+              "description": "The accessory's own part of the topic. Commands are read from the MQTT base topic followed by this and \"/set\", and its state is published to the same topic without \"/set\". Messages are JSON, for example {\"state\": \"ON\"} or {\"state\": \"OFF\"}. See the README for details.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.accessories && model.accessories[arrayIndices] && model.accessories[arrayIndices].mqttSubscribe === true;"
+              }
             }
           }
         }
@@ -216,6 +235,25 @@
                     "required": true
                   }
                 }
+              }
+            },
+            "mqttSubscribe": {
+              "title": "Control via MQTT",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Listen for commands and publish this accessory's on/off state. Requires the MQTT settings above to be enabled and filled in.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true;"
+              }
+            },
+            "mqttTopic": {
+              "title": "MQTT Topic",
+              "type": "string",
+              "required": false,
+              "description": "The accessory's own part of the topic. Commands are read from the MQTT base topic followed by this and \"/set\", and its state is published to the same topic without \"/set\". Messages are JSON, for example {\"state\": \"ON\"} or {\"state\": \"OFF\"}. See the README for details.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.advancedAccessories && model.advancedAccessories[arrayIndices] && model.advancedAccessories[arrayIndices].mqttSubscribe === true;"
               }
             }
           }
@@ -423,7 +461,7 @@
               "type": "boolean",
               "default": false,
               "required": false,
-              "description": "Drive this fan from MQTT messages. Requires the MQTT settings above to be enabled and filled in.",
+              "description": "Listen for commands and publish this accessory's on/off state. Requires the MQTT settings above to be enabled and filled in.",
               "condition": {
                 "functionBody": "return model.enableMqtt === true;"
               }
@@ -432,10 +470,17 @@
               "title": "MQTT Topic",
               "type": "string",
               "required": false,
-              "description": "The fan's own part of the topic. It listens on the MQTT base topic followed by this, for example \"broadlinkrm/bedroom-fan\". See the README for the message format.",
+              "description": "The accessory's own part of the topic. Commands are read from the MQTT base topic followed by this and \"/set\", and its state is published to the same topic without \"/set\". Messages are JSON, for example {\"state\": \"ON\", \"speed\": 100, \"swing\": \"ON\"}. See the README for details.",
               "condition": {
                 "functionBody": "return model.enableMqtt === true && model.fans && model.fans[arrayIndices] && model.fans[arrayIndices].mqttSubscribe === true;"
               }
+            },
+            "swingOnPowerOn": {
+              "title": "Swing On Power On",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Start the fan swinging whenever it is turned on, unless it is swinging already. Sent once the speed has settled."
             }
           }
         }
@@ -544,6 +589,25 @@
                   }
                 }
               }
+            },
+            "mqttSubscribe": {
+              "title": "Control via MQTT",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Listen for commands and publish this accessory's on/off state. Requires the MQTT settings above to be enabled and filled in.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true;"
+              }
+            },
+            "mqttTopic": {
+              "title": "MQTT Topic",
+              "type": "string",
+              "required": false,
+              "description": "The accessory's own part of the topic. Commands are read from the MQTT base topic followed by this and \"/set\", and its state is published to the same topic without \"/set\". Messages are JSON, for example {\"state\": \"ON\", \"level\": 50} - level is a percentage. See the README for details.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.dimmers && model.dimmers[arrayIndices] && model.dimmers[arrayIndices].mqttSubscribe === true;"
+              }
             }
           }
         }
@@ -629,6 +693,25 @@
               "title": "Exit Signal",
               "type": "string",
               "required": false
+            },
+            "mqttSubscribe": {
+              "title": "Control via MQTT",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Listen for commands and publish this accessory's on/off state. Requires the MQTT settings above to be enabled and filled in.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true;"
+              }
+            },
+            "mqttTopic": {
+              "title": "MQTT Topic",
+              "type": "string",
+              "required": false,
+              "description": "The accessory's own part of the topic. Commands are read from the MQTT base topic followed by this and \"/set\", and its state is published to the same topic without \"/set\". Messages are JSON, for example {\"state\": \"ON\"} or {\"state\": \"OFF\"}. See the README for details.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.tvs && model.tvs[arrayIndices] && model.tvs[arrayIndices].mqttSubscribe === true;"
+              }
             }
           }
         }
@@ -684,7 +767,9 @@
         "accessories[].rmDevice",
         "accessories[].accessoryType",
         "accessories[].powerOnCode",
-        "accessories[].powerOffCode"
+        "accessories[].powerOffCode",
+        "accessories[].mqttSubscribe",
+        "accessories[].mqttTopic"
       ]
     },
     {
@@ -702,6 +787,8 @@
         "advancedAccessories[].rmDevice",
         "advancedAccessories[].offCode",
         "advancedAccessories[].timeoutSeconds",
+        "advancedAccessories[].mqttSubscribe",
+        "advancedAccessories[].mqttTopic",
         {
           "type": "array",
           "key": "advancedAccessories[].signals",
@@ -738,6 +825,7 @@
         "fans[].swingRemembers",
         "fans[].swingPowersOn",
         "fans[].swingPowersOff",
+        "fans[].swingOnPowerOn",
         "fans[].swingSwitch",
         "fans[].powerToggleCode",
         "fans[].powerOnCode",
@@ -790,6 +878,8 @@
         "dimmers[].zeroPercentCode",
         "dimmers[].hundredPercentCode",
         "dimmers[].debounceSeconds",
+        "dimmers[].mqttSubscribe",
+        "dimmers[].mqttTopic",
         {
           "type": "array",
           "key": "dimmers[].levels",
@@ -828,7 +918,9 @@
         "tvs[].selectCode",
         "tvs[].infoCode",
         "tvs[].backCode",
-        "tvs[].exitCode"
+        "tvs[].exitCode",
+        "tvs[].mqttSubscribe",
+        "tvs[].mqttTopic"
       ]
     },
     {

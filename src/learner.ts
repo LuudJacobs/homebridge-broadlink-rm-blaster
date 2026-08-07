@@ -343,7 +343,8 @@ async function learnTv(
     powerOnCode: powerOn.hex,
   };
 
-  const optionalSignals: Array<[string, keyof TvAccessoryConfig]> = [
+  // Narrowed to the signal fields, so a non-string config key can't slip in.
+  const optionalSignals = [
     ['Power Off (skip to reuse Power On)', 'powerOffCode'],
     ['Volume Up', 'volumeUpCode'],
     ['Volume Down', 'volumeDownCode'],
@@ -356,7 +357,7 @@ async function learnTv(
     ['Info', 'infoCode'],
     ['Back', 'backCode'],
     ['Exit', 'exitCode'],
-  ];
+  ] as const satisfies ReadonlyArray<readonly [string, keyof TvAccessoryConfig]>;
 
   for (const [label, field] of optionalSignals) {
     const result = await learnOptionalSignal(client, rmDevice.ip, settings, label);
@@ -634,6 +635,7 @@ async function learnFan(
     );
     item.swingPowersOn = await askYesNo('Does turning swing on power the fan on?');
     item.swingPowersOff = await askYesNo('Does turning swing off power the fan off?');
+    item.swingOnPowerOn = await askYesNo('Should the fan start swinging whenever it is turned on?');
   }
 
   // Extra on/off features.

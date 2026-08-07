@@ -6,6 +6,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- MQTT control for simple on/off accessories, advanced accessories, dimmer
+  lights and TVs, alongside fans. Simple accessories, advanced accessories
+  and TVs take `{"state": "ON"}`; dimmers also take `{"level": 50}`.
+- Fans: a "Swing On Power On" option that starts the fan oscillating
+  whenever it is turned on, sent once the speed has settled. Skipped if it
+  is already swinging, since the signal is usually a toggle.
+- Accessories controlled over MQTT now publish their own on/off state as
+  `{"state": "ON"}` whenever they turn on or off, however that was
+  triggered.
+
+### Fixed
+- Sliding a fan on fired a signal the instant HomeKit reported it active,
+  while the slider was still moving - on a fan whose speed button is also
+  its power button, that press is part of the very sequence the slider is
+  about to work out. Turning on is now folded into the same settle as the
+  slider, so a slide sends one burst at the end. Turning off stays
+  immediate.
+
+### Changed
+- MQTT commands are now read from `<topic>/set` rather than `<topic>`,
+  which is left to carry the accessory's state. Existing fans keep their
+  configured topic but the publisher must move to `<topic>/set`.
+
 ## [1.6.0] - 2026-08-07
 
 ### Added
