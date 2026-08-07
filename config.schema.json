@@ -70,7 +70,7 @@
         "type": "boolean",
         "default": true,
         "required": false,
-        "description": "Publish readings as MQTT retained messages, so a subscriber connecting later immediately gets the last known reading.",
+        "description": "Publish sensor readings and accessory state as MQTT retained messages, so a subscriber connecting later immediately gets the last known values.",
         "condition": {
           "functionBody": "return model.enableMqtt === true;"
         }
