@@ -71,8 +71,8 @@ publishes its own on/off state to the same topic without `/set`:
 
 State is published as `{"state": "ON"}` or `{"state": "OFF"}` whenever the
 accessory turns on or off, however it was triggered. It is retained unless
-you untick "Retain Messages", so a subscriber connecting later
-immediately gets the last known state. Commands are JSON,
+you untick "Retain state messages" on that accessory, so a subscriber
+connecting later immediately gets the last known state. Commands are JSON,
 and anything left out is not changed.
 
 ### Simple on/off accessories, advanced accessories and TVs
