@@ -24,7 +24,6 @@ export class MqttBridge {
     host: string | undefined,
     port: number | undefined,
     private readonly baseTopic: string,
-    private readonly retain: boolean,
     username?: string,
     password?: string,
   ) {
@@ -80,12 +79,12 @@ export class MqttBridge {
     return true;
   }
 
-  publishState(topic: string, on: boolean): void {
+  publishState(topic: string, on: boolean, retain: boolean): void {
     if (!this.client) {
       return;
     }
     const stateTopic = this.deviceTopic(topic);
-    this.client.publish(stateTopic, JSON.stringify({ state: on ? 'ON' : 'OFF' }), { retain: this.retain }, (error) => {
+    this.client.publish(stateTopic, JSON.stringify({ state: on ? 'ON' : 'OFF' }), { retain }, (error) => {
       if (error) {
         this.log.warn(`Failed to publish MQTT state to ${stateTopic}: ${error.message}`);
       }
@@ -100,13 +99,13 @@ export class MqttBridge {
     });
   }
 
-  publishReading(deviceName: string, temperature: number, humidity: number): void {
+  publishReading(deviceName: string, temperature: number, humidity: number, retain: boolean): void {
     if (!this.client) {
       return;
     }
 
     const topic = buildTopic(this.baseTopic, deviceName);
-    this.client.publish(topic, JSON.stringify({ temperature, humidity }), { retain: this.retain }, (error) => {
+    this.client.publish(topic, JSON.stringify({ temperature, humidity }), { retain }, (error) => {
       if (error) {
         this.log.warn(`Failed to publish MQTT reading: ${error.message}`);
       }
