@@ -1,8 +1,9 @@
 import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 
 import type { BroadlinkRMBlasterPlatform } from '../platform';
+import { MqttLink } from '../mqttLink';
 import type { TvAccessoryConfig } from '../configTypes';
-import { selectPowerCode } from './basicAccessory';
+import { powerSignalName, selectPowerCode } from './basicAccessory';
 
 export interface RemoteKeyResolution {
   signalName: string;
@@ -39,6 +40,8 @@ export function resolveRemoteKeyCode(config: TvAccessoryConfig, remoteKey: numbe
 const PLACEHOLDER_INPUT_IDENTIFIER = 1;
 
 export class TvAccessory {
+  private readonly mqtt: MqttLink;
+
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
@@ -60,6 +63,15 @@ export class TvAccessory {
     tvService.getCharacteristic(this.platform.Characteristic.Active)
       .onGet(() => this.getActive())
       .onSet((value) => this.setActive(value));
+
+    this.mqtt = new MqttLink(this.platform, this.config.name, this.config, async (command) => {
+      if (command.state !== undefined) {
+        await this.setActive(command.state === 'on'
+          ? this.platform.Characteristic.Active.ACTIVE
+          : this.platform.Characteristic.Active.INACTIVE);
+        tvService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive());
+      }
+    });
 
     // We don't have real inputs (channels/apps) to switch between - this
     // characteristic and the placeholder InputSource below only exist
@@ -120,8 +132,9 @@ export class TvAccessory {
   private async setActive(value: CharacteristicValue): Promise<void> {
     const on = value === this.platform.Characteristic.Active.ACTIVE;
     const code = selectPowerCode(this.config, on);
-    await this.send(code, on ? 'Power On' : 'Power Off');
+    await this.send(code, powerSignalName(this.config, on));
     this.accessory.context.active = on;
+    this.mqtt.publishState(on);
   }
 
   private async handleRemoteKey(value: CharacteristicValue): Promise<void> {

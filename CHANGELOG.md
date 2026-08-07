@@ -6,6 +6,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.7.0] - 2026-08-07
+
+### Added
+- MQTT control for simple on/off accessories, advanced accessories, dimmer
+  lights and TVs, alongside fans. Simple accessories, advanced accessories
+  and TVs take `{"state": "ON"}`; dimmers also take `{"level": 50}`.
+- Accessories controlled over MQTT publish their own on/off state as
+  `{"state": "ON"}` whenever they turn on or off, however that was
+  triggered.
+- Fans: a "Swing On Power On" option that starts the fan oscillating
+  whenever it is turned on, sent once the speed has settled. Skipped if it
+  is already swinging, since the signal is usually a toggle.
+
+### Changed
+- MQTT commands are now read from `<topic>/set` rather than `<topic>`,
+  which is left to carry the accessory's state. An existing fan keeps its
+  configured topic, but whatever publishes to it has to move to
+  `<topic>/set`.
+- Retaining MQTT messages is set per device and per accessory - "Retain
+  sensor data messages" on an RM device, "Retain state messages" on an
+  accessory - instead of one setting covering everything. Both default to
+  on, so retaining carries on as before.
+
+### Fixed
+- Sliding a fan on fired a signal the instant HomeKit reported it active,
+  while the slider was still moving. On a fan whose speed button is also
+  its power button that press is part of the very sequence the slider is
+  about to work out, so it read as one signal too many. Turning on now
+  waits on the same settle as the slider, and a slide sends one burst at
+  the end. Turning off stays immediate.
+- Turning a simple accessory or TV off with no Power Off Signal configured
+  logged "Sent Power Off" while actually re-sending Power On, which only
+  turns anything off if that signal is a toggle. The log now names the
+  signal really sent.
+
 ## [1.6.0] - 2026-08-07
 
 ### Added

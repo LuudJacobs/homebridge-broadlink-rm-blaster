@@ -1,4 +1,4 @@
-# Broadlink RM Blaster 1.6.0
+# Broadlink RM Blaster 1.7.0
 
 **This Homebridge plugin has been 100% vibe coded with Claude.**
 
@@ -58,15 +58,45 @@ Backs up `config.json` to `config.json.backup` once per session before writing a
 ## MQTT
 
 Enable MQTT in the plugin settings to publish temperature and humidity
-readings, and to drive fans from MQTT messages.
+readings, and to control accessories over MQTT.
+
+Tick "Control via MQTT" on an accessory and give it a topic. It then reads
+commands from the MQTT base topic followed by that topic and `/set`, and
+publishes its own on/off state to the same topic without `/set`:
+
+| | Topic |
+| --- | --- |
+| Commands in | `broadlinkrm/bedroom-fan/set` |
+| State out | `broadlinkrm/bedroom-fan` |
+
+State is published as `{"state": "ON"}` or `{"state": "OFF"}` whenever the
+accessory turns on or off, however it was triggered. It is retained unless
+you untick "Retain state messages" on that accessory, so a subscriber
+connecting later immediately gets the last known state. Commands are JSON,
+and anything left out is not changed.
+
+### Simple on/off accessories, advanced accessories and TVs
+
+```json
+{ "state": "ON" }
+```
+
+| Key | Values |
+| --- | --- |
+| `state` | `ON` or `OFF` |
+
+### Dimmer lights
+
+```json
+{ "state": "ON", "level": 50 }
+```
+
+| Key | Values |
+| --- | --- |
+| `state` | `ON` or `OFF` |
+| `level` | `0` to `100` |
 
 ### Fans
-
-Tick "Control via MQTT" on a fan and give it a topic. The fan listens on
-the MQTT base topic followed by that topic, for example
-`broadlinkrm/bedroom-fan`.
-
-Messages are JSON:
 
 ```json
 { "state": "ON", "speed": 100, "swing": "ON" }
@@ -78,9 +108,9 @@ Messages are JSON:
 | `speed` | `0` to `100` |
 | `swing` | `ON` or `OFF` |
 
-Anything left out is not changed, so `{"speed": 50}` only changes the
-speed. `"state": "OFF"` turns the fan off and ignores the rest of the
-message. Retained messages are applied when the plugin connects.
+`{"speed": 50}` on its own only changes the speed. `"state": "OFF"` turns
+the fan off and ignores the rest of the message. Retained messages are
+applied when the plugin connects.
 
 ## Debugging
 
