@@ -6,6 +6,7 @@ import type { MqttCommand } from './mqttCommand';
 export interface MqttLinkConfig {
   mqttSubscribe?: boolean;
   mqttTopic?: string;
+  mqttRetain?: boolean;
 }
 
 // Ties one accessory to MQTT: listens for commands on <topic>/set and
@@ -14,6 +15,7 @@ export interface MqttLinkConfig {
 // unconditionally.
 export class MqttLink {
   private readonly topic?: string;
+  private readonly retain: boolean = true;
   private lastPublished?: boolean;
 
   constructor(
@@ -39,6 +41,7 @@ export class MqttLink {
     }
 
     this.topic = topic;
+    this.retain = config.mqttRetain !== false;
     this.platform.mqtt.subscribeToCommands(topic, (payload) => {
       const command = parseMqttCommand(payload);
       if (!command) {
@@ -65,6 +68,6 @@ export class MqttLink {
       return;
     }
     this.lastPublished = on;
-    this.platform.mqtt.publishState(this.topic, on);
+    this.platform.mqtt.publishState(this.topic, on, this.retain);
   }
 }

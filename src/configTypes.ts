@@ -5,6 +5,9 @@ export interface RmDeviceConfig {
   ip: string;
   enableTemperatureHumidity?: boolean;
   enableMqttPublish?: boolean;
+  // Retain this device's readings, so a subscriber connecting later
+  // immediately gets the last one. Defaults to on.
+  mqttRetain?: boolean;
 }
 
 export type BasicAccessoryType = 'light' | 'switch' | 'outlet' | 'fan';
@@ -20,6 +23,8 @@ export interface BasicAccessoryConfig {
   // MQTT settings to be filled in and enabled.
   mqttSubscribe?: boolean;
   mqttTopic?: string;
+  // Retain this accessory's state message. Defaults to on.
+  mqttRetain?: boolean;
 }
 
 export interface BrightnessLevelConfig {
@@ -46,6 +51,8 @@ export interface DimmerAccessoryConfig {
   // MQTT settings to be filled in and enabled.
   mqttSubscribe?: boolean;
   mqttTopic?: string;
+  // Retain this accessory's state message. Defaults to on.
+  mqttRetain?: boolean;
 }
 
 export interface AdvancedSignalConfig {
@@ -63,6 +70,8 @@ export interface AdvancedAccessoryConfig {
   // MQTT settings to be filled in and enabled.
   mqttSubscribe?: boolean;
   mqttTopic?: string;
+  // Retain this accessory's state message. Defaults to on.
+  mqttRetain?: boolean;
 }
 
 // An extra on/off feature of a fan (cooling, ioniser, ...) - a plain
@@ -127,6 +136,8 @@ export interface FanAccessoryConfig {
   // MQTT settings to be filled in and enabled.
   mqttSubscribe?: boolean;
   mqttTopic?: string;
+  // Retain this accessory's state message. Defaults to on.
+  mqttRetain?: boolean;
 
   // Exposes swing on its own switch as well as the fan's built-in
   // oscillate control. The learner turns this on when the fan carries
@@ -166,6 +177,8 @@ export interface TvAccessoryConfig {
   // MQTT settings to be filled in and enabled.
   mqttSubscribe?: boolean;
   mqttTopic?: string;
+  // Retain this accessory's state message. Defaults to on.
+  mqttRetain?: boolean;
 }
 
 export interface BlasterPlatformConfig extends PlatformConfig {
@@ -182,5 +195,4 @@ export interface BlasterPlatformConfig extends PlatformConfig {
   mqttUsername?: string;
   mqttPassword?: string;
   mqttBaseTopic?: string;
-  mqttRetain?: boolean;
 }

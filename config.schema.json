@@ -65,16 +65,6 @@
           "functionBody": "return model.enableMqtt === true;"
         }
       },
-      "mqttRetain": {
-        "title": "Retain Messages",
-        "type": "boolean",
-        "default": true,
-        "required": false,
-        "description": "Publish sensor readings and accessory state as MQTT retained messages, so a subscriber connecting later immediately gets the last known values.",
-        "condition": {
-          "functionBody": "return model.enableMqtt === true;"
-        }
-      },
       "rmDevices": {
         "title": "Broadlink RM Devices",
         "type": "array",
@@ -108,6 +98,16 @@
               "default": false,
               "required": false,
               "description": "Requires MQTT to be enabled and configured below"
+            },
+            "mqttRetain": {
+              "title": "Retain sensor data messages",
+              "type": "boolean",
+              "default": true,
+              "required": false,
+              "description": "A subscriber connecting later immediately gets this device's last reading.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.rmDevices && model.rmDevices[arrayIndices] && model.rmDevices[arrayIndices].enableMqttPublish === true;"
+              }
             }
           }
         }
@@ -189,6 +189,16 @@
               "condition": {
                 "functionBody": "return model.enableMqtt === true && model.accessories && model.accessories[arrayIndices] && model.accessories[arrayIndices].mqttSubscribe === true;"
               }
+            },
+            "mqttRetain": {
+              "title": "Retain state messages",
+              "type": "boolean",
+              "default": true,
+              "required": false,
+              "description": "A subscriber connecting later immediately gets this accessory's last known state.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.accessories && model.accessories[arrayIndices] && model.accessories[arrayIndices].mqttSubscribe === true;"
+              }
             }
           }
         }
@@ -252,6 +262,16 @@
               "type": "string",
               "required": false,
               "description": "The accessory's own part of the topic. Commands are read from the MQTT base topic followed by this and \"/set\", and its state is published to the same topic without \"/set\". Messages are JSON, for example {\"state\": \"ON\"} or {\"state\": \"OFF\"}. See the README for details.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.advancedAccessories && model.advancedAccessories[arrayIndices] && model.advancedAccessories[arrayIndices].mqttSubscribe === true;"
+              }
+            },
+            "mqttRetain": {
+              "title": "Retain state messages",
+              "type": "boolean",
+              "default": true,
+              "required": false,
+              "description": "A subscriber connecting later immediately gets this accessory's last known state.",
               "condition": {
                 "functionBody": "return model.enableMqtt === true && model.advancedAccessories && model.advancedAccessories[arrayIndices] && model.advancedAccessories[arrayIndices].mqttSubscribe === true;"
               }
@@ -481,6 +501,16 @@
               "default": false,
               "required": false,
               "description": "Start the fan swinging whenever it is turned on, unless it is swinging already. Sent once the speed has settled."
+            },
+            "mqttRetain": {
+              "title": "Retain state messages",
+              "type": "boolean",
+              "default": true,
+              "required": false,
+              "description": "A subscriber connecting later immediately gets this accessory's last known state.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.fans && model.fans[arrayIndices] && model.fans[arrayIndices].mqttSubscribe === true;"
+              }
             }
           }
         }
@@ -608,6 +638,16 @@
               "condition": {
                 "functionBody": "return model.enableMqtt === true && model.dimmers && model.dimmers[arrayIndices] && model.dimmers[arrayIndices].mqttSubscribe === true;"
               }
+            },
+            "mqttRetain": {
+              "title": "Retain state messages",
+              "type": "boolean",
+              "default": true,
+              "required": false,
+              "description": "A subscriber connecting later immediately gets this accessory's last known state.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.dimmers && model.dimmers[arrayIndices] && model.dimmers[arrayIndices].mqttSubscribe === true;"
+              }
             }
           }
         }
@@ -712,6 +752,16 @@
               "condition": {
                 "functionBody": "return model.enableMqtt === true && model.tvs && model.tvs[arrayIndices] && model.tvs[arrayIndices].mqttSubscribe === true;"
               }
+            },
+            "mqttRetain": {
+              "title": "Retain state messages",
+              "type": "boolean",
+              "default": true,
+              "required": false,
+              "description": "A subscriber connecting later immediately gets this accessory's last known state.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.tvs && model.tvs[arrayIndices] && model.tvs[arrayIndices].mqttSubscribe === true;"
+              }
             }
           }
         }
@@ -727,7 +777,8 @@
         "rmDevices[].name",
         "rmDevices[].ip",
         "rmDevices[].enableTemperatureHumidity",
-        "rmDevices[].enableMqttPublish"
+        "rmDevices[].enableMqttPublish",
+        "rmDevices[].mqttRetain"
       ]
     },
     {
@@ -748,8 +799,7 @@
           "key": "mqttPassword",
           "type": "password"
         },
-        "mqttBaseTopic",
-        "mqttRetain"
+        "mqttBaseTopic"
       ]
     },
     {
@@ -769,7 +819,8 @@
         "accessories[].powerOnCode",
         "accessories[].powerOffCode",
         "accessories[].mqttSubscribe",
-        "accessories[].mqttTopic"
+        "accessories[].mqttTopic",
+        "accessories[].mqttRetain"
       ]
     },
     {
@@ -789,6 +840,7 @@
         "advancedAccessories[].timeoutSeconds",
         "advancedAccessories[].mqttSubscribe",
         "advancedAccessories[].mqttTopic",
+        "advancedAccessories[].mqttRetain",
         {
           "type": "array",
           "key": "advancedAccessories[].signals",
@@ -838,6 +890,7 @@
         "fans[].resyncSwitch",
         "fans[].mqttSubscribe",
         "fans[].mqttTopic",
+        "fans[].mqttRetain",
         {
           "type": "array",
           "key": "fans[].modes",
@@ -880,6 +933,7 @@
         "dimmers[].debounceSeconds",
         "dimmers[].mqttSubscribe",
         "dimmers[].mqttTopic",
+        "dimmers[].mqttRetain",
         {
           "type": "array",
           "key": "dimmers[].levels",
@@ -920,7 +974,8 @@
         "tvs[].backCode",
         "tvs[].exitCode",
         "tvs[].mqttSubscribe",
-        "tvs[].mqttTopic"
+        "tvs[].mqttTopic",
+        "tvs[].mqttRetain"
       ]
     },
     {

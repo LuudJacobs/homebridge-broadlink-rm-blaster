@@ -26,6 +26,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   immediate.
 
 ### Changed
+- Retaining MQTT messages is now set per device and per accessory -
+  "Retain sensor data messages" on an RM device, "Retain state messages"
+  on an accessory - instead of one setting covering everything. Both
+  default to on, so retaining carries on as before.
 - MQTT commands are now read from `<topic>/set` rather than `<topic>`,
   which is left to carry the accessory's state. Existing fans keep their
   configured topic but the publisher must move to `<topic>/set`.
