@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- MQTT control for simple on/off accessories, advanced accessories, dimmer
+  lights and TVs, alongside fans. Simple accessories, advanced accessories
+  and TVs take `{"state": "ON"}`; dimmers also take `{"level": 50}`.
+- Accessories controlled over MQTT now publish their own on/off state as
+  `{"state": "ON"}` whenever they turn on or off, however that was
+  triggered.
+
+### Changed
+- MQTT commands are now read from `<topic>/set` rather than `<topic>`,
+  which is left to carry the accessory's state. Existing fans keep their
+  configured topic but the publisher must move to `<topic>/set`.
+
 ## [1.6.0] - 2026-08-07
 
 ### Added
