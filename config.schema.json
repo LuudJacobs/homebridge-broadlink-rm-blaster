@@ -474,6 +474,13 @@
               "condition": {
                 "functionBody": "return model.enableMqtt === true && model.fans && model.fans[arrayIndices] && model.fans[arrayIndices].mqttSubscribe === true;"
               }
+            },
+            "swingOnPowerOn": {
+              "title": "Swing On Power On",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Start the fan swinging whenever it is turned on, unless it is swinging already. Sent once the speed has settled."
             }
           }
         }
@@ -818,6 +825,7 @@
         "fans[].swingRemembers",
         "fans[].swingPowersOn",
         "fans[].swingPowersOff",
+        "fans[].swingOnPowerOn",
         "fans[].swingSwitch",
         "fans[].powerToggleCode",
         "fans[].powerOnCode",

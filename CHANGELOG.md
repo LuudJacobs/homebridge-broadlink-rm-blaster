@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MQTT control for simple on/off accessories, advanced accessories, dimmer
   lights and TVs, alongside fans. Simple accessories, advanced accessories
   and TVs take `{"state": "ON"}`; dimmers also take `{"level": 50}`.
+- Fans: a "Swing On Power On" option that starts the fan oscillating
+  whenever it is turned on, sent once the speed has settled. Skipped if it
+  is already swinging, since the signal is usually a toggle.
 - Accessories controlled over MQTT now publish their own on/off state as
   `{"state": "ON"}` whenever they turn on or off, however that was
   triggered.
