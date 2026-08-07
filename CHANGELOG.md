@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `{"state": "ON"}` whenever they turn on or off, however that was
   triggered.
 
+### Fixed
+- Sliding a fan on fired a signal the instant HomeKit reported it active,
+  while the slider was still moving - on a fan whose speed button is also
+  its power button, that press is part of the very sequence the slider is
+  about to work out. Turning on is now folded into the same settle as the
+  slider, so a slide sends one burst at the end. Turning off stays
+  immediate.
+
 ### Changed
 - MQTT commands are now read from `<topic>/set` rather than `<topic>`,
   which is left to carry the accessory's state. Existing fans keep their
