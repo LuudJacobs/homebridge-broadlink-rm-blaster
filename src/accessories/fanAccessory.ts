@@ -79,6 +79,7 @@ export class FanAccessory {
   private swingSwitchService?: Service;
   private speedDebounceTimer?: NodeJS.Timeout;
   private pendingSpeedPercent?: number;
+  private pendingActive = false;
 
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
@@ -103,7 +104,7 @@ export class FanAccessory {
 
     this.fanService.getCharacteristic(this.platform.Characteristic.Active)
       .onGet(() => this.getActive())
-      .onSet((value) => this.setActive(value));
+      .onSet((value) => this.setActiveFromHomeKit(value));
 
     if (this.speedCount > 1) {
       this.fanService.getCharacteristic(this.platform.Characteristic.RotationSpeed)
@@ -345,6 +346,21 @@ export class FanAccessory {
   // Power
   // ---------------------------------------------------------------------
 
+  // Sliding a fan on sends Active as well as a run of speed values. Acting
+  // on Active straight away fires a signal while the user is still
+  // dragging, and on a fan whose speed button is also its power button
+  // that press is part of the very sequence the slider is about to work
+  // out. So let the slider settle and do it all once - turning off stays
+  // immediate, since there is nothing to merge it with.
+  private setActiveFromHomeKit(value: CharacteristicValue): void | Promise<void> {
+    const wantOn = value === this.platform.Characteristic.Active.ACTIVE;
+    if (!wantOn || this.speedCount <= 1) {
+      return this.setActive(value);
+    }
+    this.pendingActive = true;
+    this.scheduleSpeedApply();
+  }
+
   private async setActive(value: CharacteristicValue): Promise<void> {
     const wantOn = value === this.platform.Characteristic.Active.ACTIVE;
     if (wantOn === this.isOn()) {
@@ -529,17 +545,26 @@ export class FanAccessory {
   // settle and act on the final value only.
   private setSpeedPercent(value: CharacteristicValue): void {
     this.pendingSpeedPercent = Number(value);
+    this.scheduleSpeedApply();
+  }
+
+  private scheduleSpeedApply(): void {
     if (this.speedDebounceTimer) {
       clearTimeout(this.speedDebounceTimer);
     }
     this.speedDebounceTimer = setTimeout(() => {
       this.speedDebounceTimer = undefined;
       const percent = this.pendingSpeedPercent;
+      const wantOn = this.pendingActive;
       this.pendingSpeedPercent = undefined;
-      if (percent === undefined) {
-        return;
+      this.pendingActive = false;
+
+      // A speed covers turning on by itself, so the two never both fire.
+      if (percent !== undefined) {
+        void this.applySpeedPercent(percent);
+      } else if (wantOn) {
+        void this.setActive(this.platform.Characteristic.Active.ACTIVE);
       }
-      void this.applySpeedPercent(percent);
     }, this.speedDebounceMs);
   }
 
@@ -549,6 +574,7 @@ export class FanAccessory {
       this.speedDebounceTimer = undefined;
     }
     this.pendingSpeedPercent = undefined;
+    this.pendingActive = false;
   }
 
   private async applySpeedPercent(percent: number): Promise<void> {
