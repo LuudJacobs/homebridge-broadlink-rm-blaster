@@ -104,6 +104,9 @@ export interface FanAccessoryConfig {
   swingRemembers?: boolean;
   swingPowersOn?: boolean;
   swingPowersOff?: boolean;
+  // Start the fan oscillating whenever it is turned on, unless it already
+  // is. Sent once the speed has settled.
+  swingOnPowerOn?: boolean;
 
   // Dedicated power button, if there is one. powerToggleCode and
   // powerOnCode/powerOffCode are mutually exclusive.

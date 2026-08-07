@@ -372,6 +372,7 @@ export class FanAccessory {
     try {
       if (wantOn) {
         await this.powerOn();
+        await this.startSwingIfWanted();
       } else {
         await this.powerOff();
       }
@@ -595,11 +596,17 @@ export class FanAccessory {
       return;
     }
 
+    const wasOff = !this.isOn();
     try {
       await this.powerOnFirst(!!this.config.speedPowersOn);
       await this.driveToSpeed(targetLevel);
       this.accessory.context.on = true;
       this.platform.log.info(`Set speed to level ${targetLevel} on ${this.config.name}`);
+      // Only once the speed has settled, so the fan isn't still stepping
+      // through speeds when the swing signal lands.
+      if (wasOff) {
+        await this.startSwingIfWanted();
+      }
     } catch (error) {
       // Nothing to throw to - HomeKit was answered when the slider moved.
       this.platform.log.error(`Failed to set speed on "${this.config.name}": ${(error as Error).message}`);
@@ -645,6 +652,19 @@ export class FanAccessory {
       this.fail(error);
     }
     this.pushState();
+  }
+
+  // Starts the fan oscillating when it comes on, for a fan set up to want
+  // that. Skipped when it is already swinging, since the signal is usually
+  // a toggle and would stop it instead.
+  private async startSwingIfWanted(): Promise<void> {
+    if (!this.config.swingOnPowerOn || !this.config.swingCode || this.accessory.context.swingOn) {
+      return;
+    }
+    await sleep(this.intervalMs);
+    await this.send(this.config.swingCode);
+    this.accessory.context.swingOn = true;
+    this.platform.log.info(`Sent Swing On to ${this.config.name} (swings on power on)`);
   }
 
   private async setSwingMode(value: CharacteristicValue): Promise<void> {

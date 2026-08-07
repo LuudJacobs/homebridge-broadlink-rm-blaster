@@ -635,6 +635,7 @@ async function learnFan(
     );
     item.swingPowersOn = await askYesNo('Does turning swing on power the fan on?');
     item.swingPowersOff = await askYesNo('Does turning swing off power the fan off?');
+    item.swingOnPowerOn = await askYesNo('Should the fan start swinging whenever it is turned on?');
   }
 
   // Extra on/off features.
