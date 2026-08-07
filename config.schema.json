@@ -60,7 +60,7 @@
         "default": "broadlinkrm",
         "placeholder": "broadlinkrm",
         "required": false,
-        "description": "Readings are published to <base topic>/<device name>. With the default base topic (broadlinkrm) a device named \"Default RM4 Pro\" publishes to \"broadlinkrm/default-rm4-pro\".",
+        "description": "Readings are published to the base topic followed by the device name. With the default base topic (broadlinkrm) a device named \"Default RM4 Pro\" publishes to \"broadlinkrm/default-rm4-pro\".",
         "condition": {
           "functionBody": "return model.enableMqtt === true;"
         }
@@ -113,7 +113,7 @@
         }
       },
       "accessories": {
-        "title": "Basic Accessories",
+        "title": "Simple On/Off Accessories",
         "type": "array",
         "items": {
           "type": "object",
@@ -135,10 +135,30 @@
               "required": true,
               "default": "light",
               "oneOf": [
-                { "title": "Light", "enum": ["light"] },
-                { "title": "Switch", "enum": ["switch"] },
-                { "title": "Outlet", "enum": ["outlet"] },
-                { "title": "Fan", "enum": ["fan"] }
+                {
+                  "title": "Light",
+                  "enum": [
+                    "light"
+                  ]
+                },
+                {
+                  "title": "Switch",
+                  "enum": [
+                    "switch"
+                  ]
+                },
+                {
+                  "title": "Outlet",
+                  "enum": [
+                    "outlet"
+                  ]
+                },
+                {
+                  "title": "Fan",
+                  "enum": [
+                    "fan"
+                  ]
+                }
               ]
             },
             "powerOnCode": {
@@ -196,6 +216,225 @@
                     "required": true
                   }
                 }
+              }
+            }
+          }
+        }
+      },
+      "fans": {
+        "title": "Fans",
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true
+            },
+            "rmDevice": {
+              "title": "RM Device",
+              "type": "string",
+              "required": true,
+              "description": "Must match the name of one of the configured RM devices exactly."
+            },
+            "speedCount": {
+              "title": "Number of Speeds",
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "required": false,
+              "description": "1 means the fan has no speed control, just on/off."
+            },
+            "speedUpCode": {
+              "title": "Speed Up Signal",
+              "type": "string",
+              "required": false,
+              "description": "Also used as the cycle button when there is no Speed Down Signal."
+            },
+            "speedDownCode": {
+              "title": "Speed Down Signal",
+              "type": "string",
+              "required": false,
+              "description": "Leave empty if one button cycles through the speeds."
+            },
+            "speedPowersOn": {
+              "title": "Speed Up Powers The Fan On",
+              "type": "boolean",
+              "default": false,
+              "required": false
+            },
+            "speedPowersOff": {
+              "title": "Lowest Speed Powers The Fan Off",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Enable only if dropping to the lowest speed actually switches the fan off."
+            },
+            "speedResumes": {
+              "title": "Fan Resumes Its Previous Speed",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "When off, the speed button is pressed once on power on to get the fan going."
+            },
+            "swingCode": {
+              "title": "Swing Signal",
+              "type": "string",
+              "required": false,
+              "description": "Leave empty if this fan has no swing/oscillation function."
+            },
+            "swingOffCode": {
+              "title": "Swing Off Signal",
+              "type": "string",
+              "required": false,
+              "description": "Leave empty if the Swing Signal toggles."
+            },
+            "swingRemembers": {
+              "title": "Fan Still Swings After A Power Cycle",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "When off, the swing signal is resent on power on to match what HomeKit shows."
+            },
+            "swingPowersOn": {
+              "title": "Swing On Powers The Fan On",
+              "type": "boolean",
+              "default": false,
+              "required": false
+            },
+            "swingPowersOff": {
+              "title": "Swing Off Powers The Fan Off",
+              "type": "boolean",
+              "default": false,
+              "required": false
+            },
+            "powerToggleCode": {
+              "title": "Power Signal",
+              "type": "string",
+              "required": false,
+              "description": "One button that toggles power. Leave empty if power on and off are separate buttons."
+            },
+            "powerOnCode": {
+              "title": "Power On Signal",
+              "type": "string",
+              "required": false
+            },
+            "powerOffCode": {
+              "title": "Power Off Signal",
+              "type": "string",
+              "required": false
+            },
+            "onFollowUpName": {
+              "title": "Signal After Power On - Name",
+              "type": "string",
+              "required": false,
+              "description": "A button that has to be pressed every time the fan is turned on, e.g. maxing out a thermostat."
+            },
+            "onFollowUpCode": {
+              "title": "Signal After Power On",
+              "type": "string",
+              "required": false
+            },
+            "onFollowUpPressCount": {
+              "title": "Signal After Power On - Number Of Presses",
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "required": false
+            },
+            "pressIntervalSeconds": {
+              "title": "Press Interval (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "default": 0.5,
+              "required": false,
+              "description": "Delay between repeated presses when stepping through speeds or repeating a signal."
+            },
+            "modes": {
+              "title": "Other On/Off Features",
+              "type": "array",
+              "required": false,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "title": "Name",
+                    "type": "string",
+                    "required": true,
+                    "description": "E.g. \"Cooling\". Shown in the Home app as the fan's name followed by this one, for example \"Bedroom Fan Cooling\"."
+                  },
+                  "onCode": {
+                    "title": "On Signal",
+                    "type": "string",
+                    "required": true
+                  },
+                  "offCode": {
+                    "title": "Off Signal",
+                    "type": "string",
+                    "required": false,
+                    "description": "Leave empty if the On Signal toggles."
+                  },
+                  "powersOn": {
+                    "title": "Turning It On Powers The Fan On",
+                    "type": "boolean",
+                    "default": false,
+                    "required": false
+                  },
+                  "powersOff": {
+                    "title": "Turning It Off Powers The Fan Off",
+                    "type": "boolean",
+                    "default": false,
+                    "required": false
+                  },
+                  "remembers": {
+                    "title": "Still On After A Power Cycle",
+                    "type": "boolean",
+                    "default": false,
+                    "required": false
+                  }
+                }
+              }
+            },
+            "resyncSwitch": {
+              "title": "Resync Switch",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Exposes a switch that clears what the plugin thinks this fan is doing, without sending any signals. Useful after the fan has been used from its own remote."
+            },
+            "speedDebounceSeconds": {
+              "title": "Speed Slider Debounce (seconds)",
+              "type": "number",
+              "minimum": 0,
+              "default": 0.5,
+              "required": false,
+              "description": "How long to wait for the speed slider to settle before acting on it. HomeKit sends a value for every position a slider passes through while being dragged."
+            },
+            "swingSwitch": {
+              "title": "Swing Switch",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Exposes swing on its own switch as well as the fan's built-in oscillate control. Worth enabling whenever this fan has other switches, because the Home app hides its oscillate control once an accessory is more than just a fan."
+            },
+            "mqttSubscribe": {
+              "title": "Control via MQTT",
+              "type": "boolean",
+              "default": false,
+              "required": false,
+              "description": "Drive this fan from MQTT messages. Requires the MQTT settings above to be enabled and filled in.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true;"
+              }
+            },
+            "mqttTopic": {
+              "title": "MQTT Topic",
+              "type": "string",
+              "required": false,
+              "description": "The fan's own part of the topic. It listens on the MQTT base topic followed by this, for example \"broadlinkrm/bedroom-fan\". See the README for the message format.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.fans && model.fans[arrayIndices] && model.fans[arrayIndices].mqttSubscribe === true;"
               }
             }
           }
@@ -437,7 +676,7 @@
     {
       "type": "array",
       "key": "accessories",
-      "title": "Basic Accessories",
+      "title": "Simple On/Off Accessories",
       "expandable": true,
       "expanded": false,
       "items": [
@@ -471,6 +710,59 @@
           "expanded": false,
           "items": [
             "advancedAccessories[].signals[].code"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "help",
+      "helpvalue": "<div style=\"height: 1.5rem\"></div>"
+    },
+    {
+      "type": "array",
+      "key": "fans",
+      "title": "Fans",
+      "expandable": true,
+      "expanded": false,
+      "items": [
+        "fans[].name",
+        "fans[].rmDevice",
+        "fans[].speedCount",
+        "fans[].speedUpCode",
+        "fans[].speedDownCode",
+        "fans[].speedPowersOn",
+        "fans[].speedPowersOff",
+        "fans[].speedResumes",
+        "fans[].swingCode",
+        "fans[].swingOffCode",
+        "fans[].swingRemembers",
+        "fans[].swingPowersOn",
+        "fans[].swingPowersOff",
+        "fans[].swingSwitch",
+        "fans[].powerToggleCode",
+        "fans[].powerOnCode",
+        "fans[].powerOffCode",
+        "fans[].onFollowUpName",
+        "fans[].onFollowUpCode",
+        "fans[].onFollowUpPressCount",
+        "fans[].pressIntervalSeconds",
+        "fans[].speedDebounceSeconds",
+        "fans[].resyncSwitch",
+        "fans[].mqttSubscribe",
+        "fans[].mqttTopic",
+        {
+          "type": "array",
+          "key": "fans[].modes",
+          "title": "Other On/Off Features",
+          "expandable": true,
+          "expanded": false,
+          "items": [
+            "fans[].modes[].name",
+            "fans[].modes[].onCode",
+            "fans[].modes[].offCode",
+            "fans[].modes[].powersOn",
+            "fans[].modes[].powersOff",
+            "fans[].modes[].remembers"
           ]
         }
       ]

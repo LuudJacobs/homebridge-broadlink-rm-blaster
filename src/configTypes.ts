@@ -50,6 +50,82 @@ export interface AdvancedAccessoryConfig {
   timeoutSeconds?: number;
 }
 
+// An extra on/off feature of a fan (cooling, ioniser, ...) - a plain
+// toggle, with no levels of its own.
+export interface FanModeConfig {
+  name: string;
+  // offCode omitted means onCode is a toggle.
+  onCode: string;
+  offCode?: string;
+  // Whether driving this feature also powers the whole fan on/off.
+  powersOn?: boolean;
+  powersOff?: boolean;
+  // Whether the fan still has this on after a power cycle.
+  remembers?: boolean;
+}
+
+export interface FanAccessoryConfig {
+  name: string;
+  rmDevice: string;
+  pressIntervalSeconds?: number;
+
+  // Speed. Omitted (or 1) for a fan with nothing to vary, whose tile is
+  // then just on/off. speedDownCode omitted means speedUpCode is a single
+  // cycle button that wraps back round after the top speed.
+  speedCount?: number;
+  speedUpCode?: string;
+  speedDownCode?: string;
+  // Whether stepping the speed up powers the fan on, and whether its
+  // lowest speed is really the fan being off.
+  speedPowersOn?: boolean;
+  speedPowersOff?: boolean;
+  // Whether the fan comes back at its previous speed, rather than needing
+  // the speed button pressed to get going again.
+  speedResumes?: boolean;
+
+  // Swing. swingOffCode omitted means swingCode is a toggle.
+  swingCode?: string;
+  swingOffCode?: string;
+  swingRemembers?: boolean;
+  swingPowersOn?: boolean;
+  swingPowersOff?: boolean;
+
+  // Dedicated power button, if there is one. powerToggleCode and
+  // powerOnCode/powerOffCode are mutually exclusive.
+  powerToggleCode?: string;
+  powerOnCode?: string;
+  powerOffCode?: string;
+
+  // A signal sent every time the fan is turned on, e.g. maxing out a
+  // heater's thermostat.
+  onFollowUpName?: string;
+  onFollowUpCode?: string;
+  onFollowUpPressCount?: number;
+
+  modes?: FanModeConfig[];
+
+  // Listens for commands on <mqttBaseTopic>/<mqttTopic>. Needs the
+  // platform's MQTT settings to be filled in and enabled.
+  mqttSubscribe?: boolean;
+  mqttTopic?: string;
+
+  // Exposes swing on its own switch as well as the fan's built-in
+  // oscillate control. The learner turns this on when the fan carries
+  // other services, since the Home app hides its oscillate control as
+  // soon as an accessory is more than just a fan.
+  swingSwitch?: boolean;
+
+  // How long to wait for the speed slider to settle before acting on it.
+  // HomeKit sends a value for every intermediate position while a slider
+  // is dragged, and each one would otherwise fire its own presses.
+  speedDebounceSeconds?: number;
+
+  // Exposes a momentary switch that clears what the plugin thinks the fan
+  // is doing, without sending any signals - for when the fan has been used
+  // from its own remote and HomeKit no longer matches reality.
+  resyncSwitch?: boolean;
+}
+
 export interface TvAccessoryConfig {
   name: string;
   rmDevice: string;
@@ -73,6 +149,7 @@ export interface BlasterPlatformConfig extends PlatformConfig {
   accessories?: BasicAccessoryConfig[];
   advancedAccessories?: AdvancedAccessoryConfig[];
   dimmers?: DimmerAccessoryConfig[];
+  fans?: FanAccessoryConfig[];
   tvs?: TvAccessoryConfig[];
   ntfyTopic?: string;
   enableMqtt?: boolean;

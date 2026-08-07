@@ -14,6 +14,8 @@ import type {
   BasicAccessoryConfig,
   BrightnessLevelConfig,
   DimmerAccessoryConfig,
+  FanAccessoryConfig,
+  FanModeConfig,
   RmDeviceConfig,
   TvAccessoryConfig,
 } from './configTypes';
@@ -51,7 +53,8 @@ type PendingItem =
   | { type: 'accessories'; item: BasicAccessoryConfig }
   | { type: 'advancedAccessories'; item: AdvancedAccessoryConfig }
   | { type: 'tvs'; item: TvAccessoryConfig }
-  | { type: 'dimmers'; item: DimmerAccessoryConfig };
+  | { type: 'dimmers'; item: DimmerAccessoryConfig }
+  | { type: 'fans'; item: FanAccessoryConfig };
 
 // Set only for the duration of an in-flight learnIrCode/learnRfCode call, so
 // Ctrl-C can abort it cleanly instead of the process just dying mid-learn.
@@ -114,12 +117,15 @@ async function askSignalSettings(): Promise<SignalSettings> {
   return { signalType: 'ir' };
 }
 
-async function runLearnLoop(
+// Press-and-capture only, with a retry offer on failure (e.g. a timeout) -
+// no "keep this value?" confirmation, so it's also reusable by a plain
+// capture-and-display flow that has no accessory to save it into.
+async function captureSignal(
   client: BroadlinkClient,
   ip: string,
   settings: SignalSettings,
   label: string,
-): Promise<LearnOutcome> {
+): Promise<{ status: 'captured'; hex: string } | { status: 'cancelled' }> {
   for (;;) {
     console.log(
       settings.signalType === 'rf'
@@ -142,15 +148,30 @@ async function runLearnLoop(
         return { status: 'cancelled' };
       }
       console.log(`Failed: ${message}`);
-      const retry = await readKey('Enter to retry, or "q" to cancel this accessory: ', ['', 'q']);
+      const retry = await readKey('Enter to retry, or "q" to cancel: ', ['', 'q']);
       if (retry === 'q') {
         return { status: 'cancelled' };
       }
       continue;
     }
     activeAbortController = null;
+    return { status: 'captured', hex };
+  }
+}
 
-    console.log(`Captured: ${hex}`);
+async function runLearnLoop(
+  client: BroadlinkClient,
+  ip: string,
+  settings: SignalSettings,
+  label: string,
+): Promise<LearnOutcome> {
+  for (;;) {
+    const captured = await captureSignal(client, ip, settings, label);
+    if (captured.status === 'cancelled') {
+      return { status: 'cancelled' };
+    }
+
+    console.log(`Captured: ${captured.hex}`);
     const confirm = await readKey('Enter to keep, "r" to retry, or "q" to cancel this accessory: ', ['', 'r', 'q']);
     if (confirm === 'r') {
       continue;
@@ -158,7 +179,7 @@ async function runLearnLoop(
     if (confirm === 'q') {
       return { status: 'cancelled' };
     }
-    return { status: 'learned', hex };
+    return { status: 'learned', hex: captured.hex };
   }
 }
 
@@ -432,6 +453,303 @@ async function learnDimmer(
   console.log(`\n"${name}" queued to be saved.`);
 }
 
+async function askCount(prompt: string, minimum: number): Promise<number> {
+  for (;;) {
+    const answer = (await readLine(prompt)).trim();
+    const count = Number(answer);
+    if (Number.isInteger(count) && count >= minimum) {
+      return count;
+    }
+    console.log(`Enter a whole number of ${minimum} or more.`);
+  }
+}
+
+async function askYesNo(question: string, defaultYes = false): Promise<boolean> {
+  const suffix = defaultYes ? ' [Y/n]: ' : ' [y/N]: ';
+  const choice = await readKey(`\n${question}${suffix}`, ['', 'y', 'n']);
+  if (choice === '') {
+    return defaultYes;
+  }
+  return choice === 'y';
+}
+
+// Learns a control that is either one toggle button or a separate pair.
+// Returns undefined if the user cancelled.
+async function learnTogglePair(
+  client: BroadlinkClient,
+  ip: string,
+  settings: SignalSettings,
+  label: string,
+  question: string,
+): Promise<{ onCode: string; offCode?: string } | undefined> {
+  const separate = await askYesNo(question);
+  const on = await learnRequiredSignal(client, ip, settings, separate ? `${label} On` : label);
+  if (on.status === 'cancelled') {
+    return undefined;
+  }
+  if (!separate) {
+    return { onCode: on.hex };
+  }
+  const off = await learnRequiredSignal(client, ip, settings, `${label} Off`);
+  if (off.status === 'cancelled') {
+    return undefined;
+  }
+  return { onCode: on.hex, offCode: off.hex };
+}
+
+type PowerOutcome = { status: 'ok'; power?: FanPowerCodes } | { status: 'cancelled' };
+
+interface FanPowerCodes {
+  powerToggleCode?: string;
+  powerOnCode?: string;
+  powerOffCode?: string;
+}
+
+// A signal that can only be skipped when something else already covers
+// what it would have done.
+async function learnPowerSignal(
+  client: BroadlinkClient,
+  ip: string,
+  settings: SignalSettings,
+  label: string,
+  skippable: boolean,
+): Promise<LearnOutcome | { status: 'skipped' }> {
+  if (skippable) {
+    return learnOptionalSignal(client, ip, settings, `${label} (skip if the fan has no separate button for this)`);
+  }
+  return learnRequiredSignal(client, ip, settings, label);
+}
+
+// A fan can have a dedicated power button even when a speed, feature or
+// swing button already powers it, so this is always offered. Each
+// direction can only be skipped when something else already covers it.
+async function learnPowerButton(
+  client: BroadlinkClient,
+  ip: string,
+  settings: SignalSettings,
+  onCovered: boolean,
+  offCovered: boolean,
+): Promise<PowerOutcome> {
+  if (onCovered && offCovered) {
+    if (!(await askYesNo('Does this fan also have a separate power button?'))) {
+      return { status: 'ok' };
+    }
+  }
+
+  const separate = await askYesNo('Are power on and power off separate buttons? (no = one button toggles power)');
+
+  if (!separate) {
+    const toggle = await learnPowerSignal(client, ip, settings, 'Power', onCovered && offCovered);
+    if (toggle.status === 'cancelled') {
+      return { status: 'cancelled' };
+    }
+    return { status: 'ok', power: toggle.status === 'skipped' ? undefined : { powerToggleCode: toggle.hex } };
+  }
+
+  const on = await learnPowerSignal(client, ip, settings, 'Power On', onCovered);
+  if (on.status === 'cancelled') {
+    return { status: 'cancelled' };
+  }
+  const off = await learnPowerSignal(client, ip, settings, 'Power Off', offCovered);
+  if (off.status === 'cancelled') {
+    return { status: 'cancelled' };
+  }
+
+  const power: FanPowerCodes = {};
+  if (on.status === 'learned') {
+    power.powerOnCode = on.hex;
+  }
+  if (off.status === 'learned') {
+    power.powerOffCode = off.hex;
+  }
+  return { status: 'ok', power: Object.keys(power).length > 0 ? power : undefined };
+}
+
+async function learnFan(
+  client: BroadlinkClient,
+  rmDevices: RmDeviceConfig[],
+  pendingItems: PendingItem[],
+): Promise<void> {
+  const cancelled = () => console.log('Cancelled - nothing saved for this fan.');
+
+  const rmDevice = await pickRmDevice(rmDevices);
+  if (!(await connectToDevice(client, rmDevice.ip))) {
+    return;
+  }
+  const name = await askNonEmpty('\nName for this fan: ');
+  const settings = await askSignalSettings();
+
+  const item: FanAccessoryConfig = { name, rmDevice: rmDevice.name };
+
+  // Speeds.
+  const speedCount = await askCount('\nHow many speeds does this fan have? Minimum 1: ', 1);
+  if (speedCount > 1) {
+    item.speedCount = speedCount;
+    const separate = await askYesNo(
+      'Are speed up and speed down separate buttons? (no = one button cycles through the speeds)',
+    );
+    const up = await learnRequiredSignal(client, rmDevice.ip, settings, separate ? 'Speed Up' : 'Speed');
+    if (up.status === 'cancelled') {
+      cancelled();
+      return;
+    }
+    item.speedUpCode = up.hex;
+    if (separate) {
+      const down = await learnRequiredSignal(client, rmDevice.ip, settings, 'Speed Down');
+      if (down.status === 'cancelled') {
+        cancelled();
+        return;
+      }
+      item.speedDownCode = down.hex;
+    }
+    item.speedPowersOn = await askYesNo('Does pressing speed up turn the fan on?');
+    item.speedPowersOff = await askYesNo('Does going to the lowest speed turn the fan off?');
+    item.speedResumes = await askYesNo(
+      'When the fan is turned off and back on again, does it remember the speed it was set to? '
+      + '(no = it starts at its lowest speed again)',
+    );
+  } else {
+    console.log('\nOne speed, so there is no speed button to learn - the fan is just on or off.');
+  }
+
+  // Swing.
+  if (await askYesNo('Does this fan have a swing/oscillation function?')) {
+    const swing = await learnTogglePair(
+      client,
+      rmDevice.ip,
+      settings,
+      'Swing',
+      'Are swing on and swing off separate buttons? (no = one button toggles swing)',
+    );
+    if (!swing) {
+      cancelled();
+      return;
+    }
+    item.swingCode = swing.onCode;
+    if (swing.offCode) {
+      item.swingOffCode = swing.offCode;
+    }
+    item.swingRemembers = await askYesNo(
+      'When the fan is turned off and back on again, is it still swinging?',
+    );
+    item.swingPowersOn = await askYesNo('Does turning swing on power the fan on?');
+    item.swingPowersOff = await askYesNo('Does turning swing off power the fan off?');
+  }
+
+  // Extra on/off features.
+  const modes: FanModeConfig[] = [];
+  let addMore = await askYesNo('Does this fan have any other on/off features (e.g. Cooling, Ioniser)?');
+  while (addMore) {
+    const modeName = await askNonEmpty('\nName for this feature: ');
+    const learned = await learnTogglePair(
+      client,
+      rmDevice.ip,
+      settings,
+      modeName,
+      `Are "${modeName}" on and off separate buttons? (no = one button toggles it)`,
+    );
+    if (!learned) {
+      cancelled();
+      return;
+    }
+
+    const mode: FanModeConfig = { name: modeName, onCode: learned.onCode };
+    if (learned.offCode) {
+      mode.offCode = learned.offCode;
+    }
+    console.log(`\nThis will show up in the Home app as "${name} ${modeName}".`);
+    mode.powersOn = await askYesNo(`Does turning "${modeName}" on power the fan on?`);
+    mode.powersOff = await askYesNo(`Does turning "${modeName}" off power the fan off?`);
+    mode.remembers = await askYesNo(
+      `When the fan is turned off and back on again, is "${modeName}" still on?`,
+    );
+    modes.push(mode);
+
+    console.log(`\nFeatures so far: ${modes.map((entry) => entry.name).join(', ')}`);
+    addMore = await askYesNo('Add another feature?');
+  }
+  if (modes.length > 0) {
+    item.modes = modes;
+  }
+
+  // Power. Only the directions nothing else already covers are required.
+  const onCovered = !!item.speedPowersOn || !!item.swingPowersOn || modes.some((mode) => mode.powersOn);
+  const offCovered = !!item.speedPowersOff || !!item.swingPowersOff || modes.some((mode) => mode.powersOff);
+
+  if (!onCovered && !offCovered) {
+    console.log('\nNothing else was said to control power, so this fan needs its own power button.');
+  } else if (onCovered !== offCovered) {
+    console.log(`\nThe fan already powers ${onCovered ? 'on' : 'off'} via one of the above, so the power `
+      + `${onCovered ? 'on' : 'off'} signal can be skipped if it has no separate button for it.`);
+  }
+
+  const powerOutcome = await learnPowerButton(client, rmDevice.ip, settings, onCovered, offCovered);
+  if (powerOutcome.status === 'cancelled') {
+    cancelled();
+    return;
+  }
+  Object.assign(item, powerOutcome.power ?? {});
+
+  // A signal that has to follow every power on.
+  if (await askYesNo(
+    'When the fan is turned on, is there a button that has to be pressed, possibly more than once? '
+    + '(e.g. to set a thermostat)',
+  )) {
+    const followUpName = await askNonEmpty('\nName for that button: ');
+    const followUp = await learnRequiredSignal(client, rmDevice.ip, settings, followUpName);
+    if (followUp.status === 'cancelled') {
+      cancelled();
+      return;
+    }
+    item.onFollowUpName = followUpName;
+    item.onFollowUpCode = followUp.hex;
+    item.onFollowUpPressCount = await askCount(`\nHow many times should "${followUpName}" be pressed? Minimum 1: `, 1);
+  }
+
+  // Only matters when something actually sends more than one signal in a row.
+  const needsInterval = speedCount > 1 || !!item.onFollowUpCode || !!item.swingCode;
+  if (needsInterval) {
+    item.pressIntervalSeconds = await askTimeoutSeconds();
+  }
+
+  item.resyncSwitch = await askYesNo(
+    'Expose a resync switch in the Home app? It clears what the plugin thinks this fan is doing, '
+    + 'without sending any signals - handy after using the fan\'s own remote',
+  );
+
+  // The Home app hides its built-in oscillate control as soon as an
+  // accessory carries anything beyond the fan itself, so give swing its
+  // own switch in that case. It stays a checkbox in the config UI, so it
+  // can be added or removed later without relearning anything.
+  if (item.swingCode && (modes.length > 0 || item.resyncSwitch)) {
+    item.swingSwitch = true;
+    console.log(`\nSwing will also get its own switch ("${name} Swing"), since the Home app hides its built-in `
+      + 'oscillate control once an accessory has other switches.');
+  }
+
+  pendingItems.push({ type: 'fans', item });
+  console.log(`\n"${name}" queued to be saved.`);
+}
+
+// Doesn't save anything - just captures one signal and prints it for
+// copy/pasting elsewhere (e.g. a config field this walkthrough doesn't
+// cover yet).
+async function learnHexCode(client: BroadlinkClient, rmDevices: RmDeviceConfig[]): Promise<void> {
+  const rmDevice = await pickRmDevice(rmDevices);
+  if (!(await connectToDevice(client, rmDevice.ip))) {
+    return;
+  }
+  const settings = await askSignalSettings();
+
+  const captured = await captureSignal(client, rmDevice.ip, settings, 'Signal');
+  if (captured.status === 'cancelled') {
+    return;
+  }
+
+  console.log(`\n${captured.hex}\n`);
+  await readKey('Press Enter or "q" to return to the menu: ', ['', 'q']);
+}
+
 function printFallback(pendingItems: PendingItem[]): void {
   console.error('\nHere is what would have been added - add it manually if needed:');
   console.error(JSON.stringify(pendingItems.map((pending) => pending.item), null, 2));
@@ -517,21 +835,27 @@ async function main(): Promise<void> {
 
   for (;;) {
     console.log('\nWhat would you like to learn?');
-    console.log('  1. Basic Accessory (light/switch/outlet/fan)');
-    console.log('  2. TV');
-    console.log('  3. Dimmer Light');
-    console.log('  4. Advanced Accessory (multiple signals per press)');
+    console.log('  1. Simple On/Off Accessory');
+    console.log('  2. Advanced Accessory (multiple signals per press)');
+    console.log('  3. Fan (speeds, modes, swing)');
+    console.log('  4. Dimmer Light');
+    console.log('  5. TV');
+    console.log('  6. Just show hex code');
     console.log('  q. Quit and save');
-    const choice = await readKey('Choice: ', ['1', '2', '3', '4', 'q']);
+    const choice = await readKey('Choice: ', ['1', '2', '3', '4', '5', '6', 'q']);
 
     if (choice === '1') {
       await learnBasicAccessory(client, platform.rmDevices, pendingItems);
     } else if (choice === '2') {
-      await learnTv(client, platform.rmDevices, pendingItems);
-    } else if (choice === '3') {
-      await learnDimmer(client, platform.rmDevices, pendingItems);
-    } else if (choice === '4') {
       await learnAdvancedAccessory(client, platform.rmDevices, pendingItems);
+    } else if (choice === '3') {
+      await learnFan(client, platform.rmDevices, pendingItems);
+    } else if (choice === '4') {
+      await learnDimmer(client, platform.rmDevices, pendingItems);
+    } else if (choice === '5') {
+      await learnTv(client, platform.rmDevices, pendingItems);
+    } else if (choice === '6') {
+      await learnHexCode(client, platform.rmDevices);
     } else {
       break;
     }

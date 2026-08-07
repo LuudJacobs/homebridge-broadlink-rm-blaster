@@ -1,4 +1,4 @@
-# Broadlink RM Blaster 1.5.0
+# Broadlink RM Blaster 1.6.0
 
 **This Homebridge plugin has been 100% vibe coded with Claude.**
 
@@ -23,13 +23,14 @@ hb-service add homebridge-broadlink-rm-blaster
 
 - **Multiple RM devices** configure several Broadlink RMs and assign each accessory to whichever one
 - **Interactive code learning** learn codes straight from your remote and add them to your config
-- **Basic accessories** power on/off
+- **Simple on/off accessories** power on/off
 - **Advanced accessories** one press sends multiple signals in sequence, with a configurable timeout between them
 - **Dimmer lights** one signal per discrete brightness level
+- **Fans** speed control, optional swing, extra on/off features (e.g. cooling), and an optional resync switch
 - **TVs** power on/off plus a usable remote in the iOS Remote app
 - **Temperature/humidity sensor** optionally expose sensor data
 - **ntfy.sh notifications** push notification when a RM fails to connect
-- **MQTT publishing** optionally publish sensor data to a MQTT broker
+- **MQTT** optionally publish sensor data to a broker, and drive fans from MQTT messages
 - **Fully configurable** via the Homebridge Config UI X plugin settings form
 
 ## Configuration
@@ -47,10 +48,39 @@ broadlink-rm-learner
 ```
 
 Run `broadlink-rm-learner --help` for usage details. Advanced Accessories
-(multiple signals per press) can be learned too, alongside Basic
-Accessories, TVs, and Dimmer Lights.
+(multiple signals per press) and Fans (speed levels, modes, swing) can be
+learned too, alongside Simple On/Off Accessories, TVs, and Dimmer Lights.
+There's also a "just show hex code" option that captures a single signal
+and prints it for copy/pasting, without saving anything.
 
 Backs up `config.json` to `config.json.backup` once per session before writing anything.
+
+## MQTT
+
+Enable MQTT in the plugin settings to publish temperature and humidity
+readings, and to drive fans from MQTT messages.
+
+### Fans
+
+Tick "Control via MQTT" on a fan and give it a topic. The fan listens on
+the MQTT base topic followed by that topic, for example
+`broadlinkrm/bedroom-fan`.
+
+Messages are JSON:
+
+```json
+{ "state": "ON", "speed": 100, "swing": "ON" }
+```
+
+| Key | Values |
+| --- | --- |
+| `state` | `ON` or `OFF` |
+| `speed` | `0` to `100` |
+| `swing` | `ON` or `OFF` |
+
+Anything left out is not changed, so `{"speed": 50}` only changes the
+speed. `"state": "OFF"` turns the fan off and ignores the rest of the
+message. Retained messages are applied when the plugin connects.
 
 ## Debugging
 

@@ -81,7 +81,7 @@ export class TemperatureHumiditySensorAccessory {
       }
 
       if (this.publishToMqtt) {
-        this.platform.mqttPublisher.publishReading(this.deviceName, temperature, humidity);
+        this.platform.mqtt.publishReading(this.deviceName, temperature, humidity);
       }
     } catch (error) {
       this.platform.log.warn(`Failed to read temperature/humidity from ${this.ip}: ${(error as Error).message}`);
