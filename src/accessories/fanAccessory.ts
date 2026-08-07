@@ -2,6 +2,8 @@ import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge
 
 import type { BroadlinkRMBlasterPlatform } from '../platform';
 import type { FanAccessoryConfig, FanModeConfig } from '../configTypes';
+import { MqttLink } from '../mqttLink';
+import type { MqttCommand } from '../mqttCommand';
 
 const DEFAULT_PRESS_INTERVAL_SECONDS = 0.5;
 const DEFAULT_SPEED_DEBOUNCE_SECONDS = 0.5;
@@ -66,64 +68,6 @@ export function computeStepPresses(
   return { direction: delta >= 0 ? 'up' : 'down', presses: Math.abs(delta) };
 }
 
-// What an MQTT message is asking the fan to do. Anything absent is left
-// alone, so a message can carry just the one thing it cares about.
-export interface FanCommand {
-  state?: 'on' | 'off';
-  speedPercent?: number;
-  swing?: boolean;
-}
-
-function readOnOff(value: unknown): boolean | undefined {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-  if (typeof value === 'string') {
-    const text = value.trim().toLowerCase();
-    if (text === 'on' || text === 'true') {
-      return true;
-    }
-    if (text === 'off' || text === 'false') {
-      return false;
-    }
-  }
-  return undefined;
-}
-
-// Returns undefined when there is nothing usable in the payload at all, so
-// a malformed message can be reported rather than silently doing nothing.
-export function parseFanCommand(payload: string): FanCommand | undefined {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(payload);
-  } catch {
-    return undefined;
-  }
-  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return undefined;
-  }
-
-  const body = parsed as Record<string, unknown>;
-  const command: FanCommand = {};
-
-  const state = readOnOff(body.state);
-  if (state !== undefined) {
-    command.state = state ? 'on' : 'off';
-  }
-
-  const speed = typeof body.speed === 'string' ? Number(body.speed) : body.speed;
-  if (typeof speed === 'number' && Number.isFinite(speed)) {
-    command.speedPercent = Math.min(Math.max(speed, 0), 100);
-  }
-
-  const swing = readOnOff(body.swing);
-  if (swing !== undefined) {
-    command.swing = swing;
-  }
-
-  return Object.keys(command).length > 0 ? command : undefined;
-}
-
 export class FanAccessory {
   private readonly fanService: Service;
   private readonly modeServices = new Map<string, Service>();
@@ -131,6 +75,7 @@ export class FanAccessory {
   private readonly speedDebounceMs: number;
   private readonly speedCount: number;
   private readonly modes: FanModeConfig[];
+  private readonly mqtt: MqttLink;
   private swingSwitchService?: Service;
   private speedDebounceTimer?: NodeJS.Timeout;
   private pendingSpeedPercent?: number;
@@ -188,7 +133,7 @@ export class FanAccessory {
       this.setUpResyncService();
     }
 
-    this.subscribeToMqtt();
+    this.mqtt = new MqttLink(platform, config.name, config, (command) => this.applyCommand(command));
 
     const modeNames = this.modes.map((mode) => mode.name);
     this.platform.log.info(
@@ -197,53 +142,21 @@ export class FanAccessory {
     );
   }
 
-  private subscribeToMqtt(): void {
-    if (!this.config.mqttSubscribe) {
+  private async applyCommand(command: MqttCommand): Promise<void> {
+    if (command.state === 'off') {
+      // Off wins outright; a speed alongside it would just switch the fan
+      // straight back on.
+      await this.setActive(this.platform.Characteristic.Active.INACTIVE);
       return;
     }
-    const topic = (this.config.mqttTopic ?? '').trim();
-    if (!topic) {
-      this.platform.log.warn(`"${this.config.name}" has MQTT control enabled but no topic - ignoring.`);
-      return;
+    if (command.state === 'on') {
+      await this.setActive(this.platform.Characteristic.Active.ACTIVE);
     }
-    if (!this.platform.mqtt.enabled) {
-      this.platform.log.warn(
-        `"${this.config.name}" has MQTT control enabled, but MQTT itself isn't set up - fill in the MQTT settings first.`,
-      );
-      return;
+    if (command.speedPercent !== undefined && this.speedCount > 1) {
+      await this.applySpeedPercent(command.speedPercent);
     }
-
-    this.platform.mqtt.subscribeToDevice(topic, (payload) => {
-      const command = parseFanCommand(payload);
-      if (!command) {
-        this.platform.log.warn(`Ignoring an MQTT message for "${this.config.name}" that made no sense: ${payload}`);
-        return;
-      }
-      void this.applyCommand(command);
-    });
-  }
-
-  // Driven by MQTT rather than HomeKit, so there is nobody to throw an
-  // error back to - log and move on instead.
-  private async applyCommand(command: FanCommand): Promise<void> {
-    try {
-      if (command.state === 'off') {
-        // Off wins outright; a speed alongside it would just switch it
-        // straight back on.
-        await this.setActive(this.platform.Characteristic.Active.INACTIVE);
-        return;
-      }
-      if (command.state === 'on') {
-        await this.setActive(this.platform.Characteristic.Active.ACTIVE);
-      }
-      if (command.speedPercent !== undefined && this.speedCount > 1) {
-        await this.applySpeedPercent(command.speedPercent);
-      }
-      if (command.swing !== undefined) {
-        await this.applySwing(command.swing);
-      }
-    } catch (error) {
-      this.platform.log.error(`Failed to apply an MQTT command to "${this.config.name}": ${(error as Error).message}`);
+    if (command.swing !== undefined) {
+      await this.applySwing(command.swing);
     }
   }
 
@@ -740,6 +653,7 @@ export class FanAccessory {
   // One place to resync every characteristic after any action, since a
   // single press can change power, a feature and swing all at once.
   private pushState(): void {
+    this.mqtt.publishState(this.isOn());
     this.fanService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive());
     if (this.speedCount > 1) {
       this.fanService.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.getSpeedPercent());

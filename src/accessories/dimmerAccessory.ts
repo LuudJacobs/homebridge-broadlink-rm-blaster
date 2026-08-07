@@ -1,6 +1,7 @@
 import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 
 import type { BroadlinkRMBlasterPlatform } from '../platform';
+import { MqttLink } from '../mqttLink';
 import type { DimmerAccessoryConfig } from '../configTypes';
 
 export interface ResolvedLevel {
@@ -108,6 +109,8 @@ export class DimmerAccessory {
   // showed can push it into unwanted auto-dim/cycling behavior.
   private lastSentCode?: string;
 
+  private readonly mqtt: MqttLink;
+
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
     private readonly accessory: PlatformAccessory,
@@ -125,6 +128,20 @@ export class DimmerAccessory {
     service.getCharacteristic(this.platform.Characteristic.Brightness)
       .onGet(() => this.getBrightness())
       .onSet((value) => this.setBrightness(value));
+
+    this.mqtt = new MqttLink(platform, config.name, config, async (command) => {
+      // A level of its own is enough to turn the light on, so only an
+      // explicit "OFF" switches it off.
+      if (command.state === 'off') {
+        await this.setOn(false);
+      } else if (command.levelPercent !== undefined) {
+        this.setBrightness(command.levelPercent);
+      } else if (command.state === 'on') {
+        await this.setOn(true);
+      }
+      service.updateCharacteristic(this.platform.Characteristic.On, this.getOn());
+      service.updateCharacteristic(this.platform.Characteristic.Brightness, this.getBrightness());
+    });
   }
 
   // Same assumed-state approach as BasicAccessory: a blaster has no feedback,
@@ -149,6 +166,7 @@ export class DimmerAccessory {
     this.brightnessActionId++;
     await this.send(this.config.zeroPercentCode, 'Off (Brightness 0%)');
     this.accessory.context.on = false;
+    this.mqtt.publishState(false);
   }
 
   private async setOn(value: CharacteristicValue): Promise<void> {
@@ -172,6 +190,7 @@ export class DimmerAccessory {
     // comment on brightnessActionId).
     await this.send(resolved.code, `Brightness ${nearestPercent}% (requested: ${resolved.percent}% of ${effectiveMax}%)`);
     this.accessory.context.on = true;
+    this.mqtt.publishState(true);
 
     if (this.brightnessActionId !== myActionId) {
       // A real Brightness request (e.g. dragging the slider straight up
@@ -200,6 +219,7 @@ export class DimmerAccessory {
     const effectiveMax = getEffectiveMaxPercent(this.config);
 
     this.accessory.context.on = true;
+    this.mqtt.publishState(true);
     this.accessory.context.brightnessPercent = requestedPercent;
     this.accessory.context.lastKnownLevel = resolved;
 
