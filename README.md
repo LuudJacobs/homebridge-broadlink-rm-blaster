@@ -55,6 +55,33 @@ and prints it for copy/pasting, without saving anything.
 
 Backs up `config.json` to `config.json.backup` once per session before writing anything.
 
+## MQTT
+
+Enable MQTT in the plugin settings to publish temperature and humidity
+readings, and to drive fans from MQTT messages.
+
+### Fans
+
+Tick "Control via MQTT" on a fan and give it a topic. The fan listens on
+the MQTT base topic followed by that topic, for example
+`broadlinkrm/bedroom-fan`.
+
+Messages are JSON:
+
+```json
+{ "state": "ON", "speed": 100, "swing": "ON" }
+```
+
+| Key | Values |
+| --- | --- |
+| `state` | `ON` or `OFF` |
+| `speed` | `0` to `100` |
+| `swing` | `ON` or `OFF` |
+
+Anything left out is not changed, so `{"speed": 50}` only changes the
+speed. `"state": "OFF"` turns the fan off and ignores the rest of the
+message. Retained messages are applied when the plugin connects.
+
 ## Debugging
 
 To send a single hex code straight to your RM, bypassing Homebridge/HomeKit entirely run this in the Homebridge shell:

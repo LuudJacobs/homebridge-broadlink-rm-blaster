@@ -6,47 +6,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
-- Fans: a new standalone accessory type (`Service.Fanv2`). A fan has a
-  speed (any number of speeds, driven by one cycle button or separate
-  up/down buttons), optional swing, and any number of extra on/off
-  features (cooling, ioniser, ...) each exposed as its own labelled
-  switch. Power can come from a dedicated button - one toggle, or separate
-  on/off - or from whichever speed, swing or feature button actually
-  powers the fan. A signal can be sent every time the fan is turned on,
-  e.g. maxing out a heater's thermostat. Optionally exposes a resync
-  switch that clears what the plugin thinks a fan is doing without
-  sending any signals, for when the fan has been used from its own
-  remote. Swing can also be put on its own switch, which the learner
-  enables when the fan carries other services, since the Home app hides
-  its built-in oscillate control as soon as an accessory is more than
-  just a fan. The speed slider is
-  debounced (0.5s by default) so dragging it
-  acts on where it lands rather than on every position it passes through.
-  `broadlink-rm-learner` walks through all of it.
-- Fans can be driven from MQTT. Tick "Control via MQTT" on a fan and give
-  it a topic; it then listens on `<base topic>/<topic>` for JSON messages
-  like `{"state":"ON", "speed": 100, "swing": "ON"}`, where anything left
-  out is not changed. Retained messages are applied on connect, so the fan
-  follows the last published state across a restart.
-- `broadlink-rm-learner`: new "Just show hex code" option that captures a
-  single signal and prints it for copy/pasting, without saving anything.
+## [1.6.0] - 2026-08-07
 
-### Fixed
-- Blank rows left behind in any accessory list by saving the Config UI
-  form no longer produce warnings about accessories named "undefined".
-  They are skipped quietly, with a note only when debug logging is on.
-- Fans: an extra on/off feature with no name took the whole accessory
-  down on startup, which could happen after editing a fan in the Config
-  UI left an empty row behind. Unusable features - nameless, duplicated,
-  or with no On signal - are now skipped with a warning naming the
-  problem.
+### Added
+- Fans: a new accessory type. A fan has any number of speeds (one cycle
+  button, or separate up and down buttons), optional swing, and any number
+  of extra on/off features such as cooling, each exposed as its own
+  labelled switch. Power can come from a dedicated button - a single
+  toggle or separate on/off - or from whichever speed, swing or feature
+  button actually powers the fan.
+- Fans: an optional signal sent every time the fan is turned on, for
+  things like maxing out a heater's thermostat.
+- Fans: an optional resync switch that clears what the plugin thinks the
+  fan is doing without sending any signals, for when the fan has been used
+  from its own remote.
+- Fans: swing can also be put on its own switch, since the Home app hides
+  its built-in oscillate control once an accessory is more than just a
+  fan.
+- Fans can be driven from MQTT. Give a fan a topic and it listens on
+  `<base topic>/<topic>` for messages like
+  `{"state":"ON", "speed": 100, "swing": "ON"}`. Anything left out is not
+  changed, and retained messages are applied on connect.
+- `broadlink-rm-learner`: a "Just show hex code" option that captures one
+  signal and prints it for copy/pasting, without saving anything.
 
 ### Changed
 - "Basic Accessories" renamed to "Simple On/Off Accessories" in the Config
-  UI X form and the learner CLI.
-- `broadlink-rm-learner`'s menu order now matches the Config UI X form's
-  section order (Simple On/Off, Advanced, Fan, Dimmer, TV).
+  UI form and the learner.
+- The learner's menu order now matches the Config UI form's sections.
+
+### Fixed
+- Dragging a fan's speed slider sent a signal for every position it passed
+  through. It is now debounced (0.5s by default) and acts only on where
+  the slider lands.
+- A fan feature with no name took the whole accessory down at startup,
+  which could happen after saving the fan in the Config UI. Unusable
+  features are skipped with a warning instead.
+- Blank rows left behind in any accessory list by saving the Config UI
+  form no longer log warnings about accessories named "undefined".
+- Config UI field descriptions no longer lose text wrapped in angle
+  brackets, which the form renders as HTML. The MQTT base topic
+  description had been affected since 1.3.0.
 
 ## [1.5.0] - 2026-08-06
 

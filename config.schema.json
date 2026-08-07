@@ -60,7 +60,7 @@
         "default": "broadlinkrm",
         "placeholder": "broadlinkrm",
         "required": false,
-        "description": "Readings are published to <base topic>/<device name>. With the default base topic (broadlinkrm) a device named \"Default RM4 Pro\" publishes to \"broadlinkrm/default-rm4-pro\".",
+        "description": "Readings are published to the base topic followed by the device name. With the default base topic (broadlinkrm) a device named \"Default RM4 Pro\" publishes to \"broadlinkrm/default-rm4-pro\".",
         "condition": {
           "functionBody": "return model.enableMqtt === true;"
         }
@@ -362,7 +362,7 @@
                     "title": "Name",
                     "type": "string",
                     "required": true,
-                    "description": "E.g. \"Cooling\". Shown in the Home app as \"<fan name> <feature name>\"."
+                    "description": "E.g. \"Cooling\". Shown in the Home app as the fan's name followed by this one, for example \"Bedroom Fan Cooling\"."
                   },
                   "onCode": {
                     "title": "On Signal",
@@ -432,7 +432,7 @@
               "title": "MQTT Topic",
               "type": "string",
               "required": false,
-              "description": "The fan's own part of the topic; it listens on <base topic>/<this>. Messages are JSON, e.g. {\"state\":\"ON\", \"speed\": 100, \"swing\": \"ON\"} - state turns the fan on or off, speed is a percentage, swing turns oscillation on or off. Anything left out is not changed.",
+              "description": "The fan's own part of the topic. It listens on the MQTT base topic followed by this, for example \"broadlinkrm/bedroom-fan\". See the README for the message format.",
               "condition": {
                 "functionBody": "return model.enableMqtt === true && model.fans && model.fans[arrayIndices] && model.fans[arrayIndices].mqttSubscribe === true;"
               }
