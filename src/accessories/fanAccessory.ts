@@ -110,13 +110,21 @@ export class FanAccessory {
       this.fanService.getCharacteristic(this.platform.Characteristic.RotationSpeed)
         .onGet(() => this.getSpeedPercent())
         .onSet((value) => this.setSpeedPercent(value));
+    } else if (this.fanService.testCharacteristic(this.platform.Characteristic.RotationSpeed)) {
+      // A speed that used to be configured and no longer is - the
+      // characteristic itself sticks around across restarts otherwise.
+      this.fanService.removeCharacteristic(this.fanService.getCharacteristic(this.platform.Characteristic.RotationSpeed));
     }
 
     if (this.config.swingCode) {
       this.fanService.getCharacteristic(this.platform.Characteristic.SwingMode)
         .onGet(() => this.getSwingMode())
         .onSet((value) => this.setSwingMode(value));
+    } else if (this.fanService.testCharacteristic(this.platform.Characteristic.SwingMode)) {
+      this.fanService.removeCharacteristic(this.fanService.getCharacteristic(this.platform.Characteristic.SwingMode));
     }
+
+    this.pruneStaleServices();
 
     for (const mode of this.modes) {
       this.setUpModeService(mode);
@@ -194,6 +202,29 @@ export class FanAccessory {
     }
 
     return usable;
+  }
+
+  // A mode's Switch service is added under its name as the subtype and
+  // never goes away on its own - Homebridge persists every service ever
+  // added to an accessory across restarts. If a mode gets renamed, removed,
+  // or the swing/resync switch gets unticked, the old service is orphaned:
+  // still present in HomeKit with nothing wiring it up this boot, which
+  // shows up there as "No Response".
+  private pruneStaleServices(): void {
+    const wanted = new Set(this.modes.map((mode) => mode.name));
+    if (this.config.swingCode && this.config.swingSwitch) {
+      wanted.add(SWING_SUBTYPE);
+    }
+    if (this.config.resyncSwitch) {
+      wanted.add(RESYNC_SUBTYPE);
+    }
+
+    for (const service of [...this.accessory.services]) {
+      if (service.UUID === this.platform.Service.Switch.UUID && !wanted.has(service.subtype ?? '')) {
+        this.platform.log.info(`Removing an unused switch on "${this.config.name}" - its feature is no longer configured.`);
+        this.accessory.removeService(service);
+      }
+    }
   }
 
   // Extra services on a bridged accessory are labelled off ConfiguredName,
