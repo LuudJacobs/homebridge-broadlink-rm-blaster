@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+
 import type {
   API,
   Characteristic,
@@ -13,6 +15,8 @@ import { NtfyNotifier } from './ntfyNotifier';
 import { DEFAULT_MQTT_BASE_TOPIC, MqttBridge } from './mqttClient';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BlasterPlatformConfig } from './configTypes';
+import { backupConfig, findPlatformBlock, stripBlankEntries, writeConfigAtomically } from './configFile';
+import type { HomebridgeConfigFile } from './configFile';
 import { BasicAccessory } from './accessories/basicAccessory';
 import { AdvancedAccessory } from './accessories/advancedAccessory';
 import { DimmerAccessory } from './accessories/dimmerAccessory';
@@ -76,7 +80,35 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     return true;
   }
 
+  // The Config UI X form can leave a blank row behind in config.json on
+  // save (see isBlankEntry above) - existing loads already skip those, but
+  // nothing made them go away from the file itself, so they pile up across
+  // saves. Rewrite the file to drop them, once, only when there is actually
+  // something to drop.
+  private cleanUpConfigFile(): void {
+    try {
+      const configPath = this.api.user.configPath();
+      const fileConfig: HomebridgeConfigFile = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const platformBlock = findPlatformBlock(fileConfig);
+      if (!platformBlock) {
+        return;
+      }
+      const { config: cleaned, removed } = stripBlankEntries(platformBlock);
+      if (removed.length === 0) {
+        return;
+      }
+      backupConfig(configPath);
+      Object.assign(platformBlock, cleaned);
+      writeConfigAtomically(configPath, fileConfig);
+      this.log.info(`Cleaned up config.json: removed ${removed.join(', ')}. Backed up to config.json.backup.`);
+    } catch (error) {
+      this.log.warn(`Could not clean up blank config entries: ${(error as Error).message}`);
+    }
+  }
+
   private discoverAccessories(): void {
+    this.cleanUpConfigFile();
+
     const config = this.config as BlasterPlatformConfig;
     this.activeUuids.clear();
 
