@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+- Fans: a mode/swing/resync switch that was renamed, removed, or unticked in the
+  config stuck around in the Home app as an unresponsive tile - Homebridge keeps
+  every service ever added to an accessory across restarts. Unused switches are now
+  removed automatically.
+- Blank rows the Config UI X form can leave behind in any accessory list (including a
+  fan's modes) are now stripped from `config.json` itself on startup, not just
+  skipped and logged - a `config.json.backup` is made first, same as the learner CLI.
+
 ## [1.7.0] - 2026-08-07
 
 ### Added
