@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.7.1] - 2026-08-16
+
 ### Fixed
 - Fans: a mode/swing/resync switch that was renamed, removed, or unticked in the
   config stuck around in the Home app as an unresponsive tile - Homebridge keeps
