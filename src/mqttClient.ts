@@ -1,6 +1,9 @@
 import mqtt, { MqttClient } from 'mqtt';
 import type { Logger } from 'homebridge';
 
+import { DEFAULT_LAST_SEEN_FORMAT, formatLastSeen } from './mqttLastSeen';
+import type { LastSeenFormat } from './mqttLastSeen';
+
 export const DEFAULT_MQTT_BASE_TOPIC = 'broadlinkrm';
 
 export function buildTopic(baseTopic: string, deviceName: string): string {
@@ -26,6 +29,7 @@ export class MqttBridge {
     private readonly baseTopic: string,
     username?: string,
     password?: string,
+    private readonly defaultLastSeenFormat: LastSeenFormat = DEFAULT_LAST_SEEN_FORMAT,
   ) {
     if (!enabled || !host || !port) {
       return;
@@ -84,11 +88,20 @@ export class MqttBridge {
       return;
     }
     const stateTopic = this.deviceTopic(topic);
-    this.client.publish(stateTopic, JSON.stringify({ state: on ? 'ON' : 'OFF' }), { retain }, (error) => {
+    const payload = this.withLastSeen({ state: on ? 'ON' : 'OFF' }, this.defaultLastSeenFormat);
+    this.client.publish(stateTopic, JSON.stringify(payload), { retain }, (error) => {
       if (error) {
         this.log.warn(`Failed to publish MQTT state to ${stateTopic}: ${error.message}`);
       }
     });
+  }
+
+  // Every publish - sensor readings and accessory state alike - can carry a
+  // last_seen field, same idea as zigbee2mqtt. Accessory state always uses
+  // the platform-wide default; a reading can override it per RM device.
+  private withLastSeen(body: Record<string, unknown>, format: LastSeenFormat): Record<string, unknown> {
+    const lastSeen = formatLastSeen(format, new Date());
+    return lastSeen === undefined ? body : { ...body, last_seen: lastSeen };
   }
 
   private subscribeToTopic(topic: string): void {
@@ -99,13 +112,20 @@ export class MqttBridge {
     });
   }
 
-  publishReading(deviceName: string, temperature: number, humidity: number, retain: boolean): void {
+  publishReading(
+    deviceName: string,
+    temperature: number,
+    humidity: number,
+    retain: boolean,
+    lastSeenFormat?: LastSeenFormat,
+  ): void {
     if (!this.client) {
       return;
     }
 
     const topic = buildTopic(this.baseTopic, deviceName);
-    this.client.publish(topic, JSON.stringify({ temperature, humidity }), { retain }, (error) => {
+    const payload = this.withLastSeen({ temperature, humidity }, lastSeenFormat ?? this.defaultLastSeenFormat);
+    this.client.publish(topic, JSON.stringify(payload), { retain }, (error) => {
       if (error) {
         this.log.warn(`Failed to publish MQTT reading: ${error.message}`);
       }

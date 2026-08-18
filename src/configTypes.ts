@@ -1,5 +1,7 @@
 import type { PlatformConfig } from 'homebridge';
 
+import type { LastSeenFormat } from './mqttLastSeen';
+
 export interface RmDeviceConfig {
   name: string;
   ip: string;
@@ -8,6 +10,9 @@ export interface RmDeviceConfig {
   // Retain this device's readings, so a subscriber connecting later
   // immediately gets the last one. Defaults to on.
   mqttRetain?: boolean;
+  // Overrides the platform-wide last_seen format for this device's own
+  // sensor readings. Unset means "use the platform setting".
+  mqttLastSeenFormat?: LastSeenFormat;
 }
 
 export type BasicAccessoryType = 'light' | 'switch' | 'outlet' | 'fan';
@@ -195,4 +200,7 @@ export interface BlasterPlatformConfig extends PlatformConfig {
   mqttUsername?: string;
   mqttPassword?: string;
   mqttBaseTopic?: string;
+  // Default last_seen format for every MQTT publish (sensor readings and
+  // accessory state). Defaults to iso8601 when unset.
+  mqttLastSeenFormat?: LastSeenFormat;
 }

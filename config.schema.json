@@ -65,6 +65,42 @@
           "functionBody": "return model.enableMqtt === true;"
         }
       },
+      "mqttLastSeenFormat": {
+        "title": "last_seen Format",
+        "type": "string",
+        "required": false,
+        "default": "iso8601",
+        "description": "Adds a last_seen field to every MQTT publish (sensor readings and accessory state), same idea as zigbee2mqtt. Can be overridden per RM device below.",
+        "oneOf": [
+          {
+            "title": "ISO 8601 (UTC)",
+            "enum": [
+              "iso8601"
+            ]
+          },
+          {
+            "title": "ISO 8601 (local time)",
+            "enum": [
+              "iso8601local"
+            ]
+          },
+          {
+            "title": "Epoch (ms)",
+            "enum": [
+              "epoch"
+            ]
+          },
+          {
+            "title": "Disabled",
+            "enum": [
+              "disabled"
+            ]
+          }
+        ],
+        "condition": {
+          "functionBody": "return model.enableMqtt === true;"
+        }
+      },
       "rmDevices": {
         "title": "Broadlink RM Devices",
         "type": "array",
@@ -105,6 +141,41 @@
               "default": true,
               "required": false,
               "description": "A subscriber connecting later immediately gets this device's last reading.",
+              "condition": {
+                "functionBody": "return model.enableMqtt === true && model.rmDevices && model.rmDevices[arrayIndices] && model.rmDevices[arrayIndices].enableMqttPublish === true;"
+              }
+            },
+            "mqttLastSeenFormat": {
+              "title": "last_seen Format Override",
+              "type": "string",
+              "required": false,
+              "description": "Overrides the platform-wide last_seen format above, for this device's readings only. Leave unset to use the platform setting.",
+              "oneOf": [
+                {
+                  "title": "ISO 8601 (UTC)",
+                  "enum": [
+                    "iso8601"
+                  ]
+                },
+                {
+                  "title": "ISO 8601 (local time)",
+                  "enum": [
+                    "iso8601local"
+                  ]
+                },
+                {
+                  "title": "Epoch (ms)",
+                  "enum": [
+                    "epoch"
+                  ]
+                },
+                {
+                  "title": "Disabled",
+                  "enum": [
+                    "disabled"
+                  ]
+                }
+              ],
               "condition": {
                 "functionBody": "return model.enableMqtt === true && model.rmDevices && model.rmDevices[arrayIndices] && model.rmDevices[arrayIndices].enableMqttPublish === true;"
               }
@@ -778,7 +849,8 @@
         "rmDevices[].ip",
         "rmDevices[].enableTemperatureHumidity",
         "rmDevices[].enableMqttPublish",
-        "rmDevices[].mqttRetain"
+        "rmDevices[].mqttRetain",
+        "rmDevices[].mqttLastSeenFormat"
       ]
     },
     {
@@ -799,7 +871,8 @@
           "key": "mqttPassword",
           "type": "password"
         },
-        "mqttBaseTopic"
+        "mqttBaseTopic",
+        "mqttLastSeenFormat"
       ]
     },
     {
