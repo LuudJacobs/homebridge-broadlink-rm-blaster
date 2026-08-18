@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.8.0] - 2026-08-19
+
 ### Added
 - MQTT: a `last_seen` field on every publish (sensor readings and accessory state),
   similar to zigbee2mqtt. Format is set platform-wide (ISO 8601 UTC by default, ISO
