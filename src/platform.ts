@@ -57,6 +57,7 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       blasterConfig.mqttBaseTopic ?? DEFAULT_MQTT_BASE_TOPIC,
       blasterConfig.mqttUsername,
       blasterConfig.mqttPassword,
+      blasterConfig.mqttLastSeenFormat,
     );
     this.broadlinkClient = new BroadlinkClient(this.log, this.notifier);
 
@@ -219,12 +220,14 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
         this.upsertAccessory(uuid, sensorName, (accessory) => {
           new TemperatureHumiditySensorAccessory(
             this, accessory, rmDevice.ip, sensorName, rmDevice.name, publishToMqtt, rmDevice.mqttRetain !== false,
+            rmDevice.mqttLastSeenFormat,
           );
         });
       } else {
         // MQTT-only: no HomeKit accessory needed, just poll and publish.
         new TemperatureHumiditySensorAccessory(
           this, undefined, rmDevice.ip, rmDevice.name, rmDevice.name, publishToMqtt, rmDevice.mqttRetain !== false,
+          rmDevice.mqttLastSeenFormat,
         );
       }
     }

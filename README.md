@@ -1,4 +1,4 @@
-# Broadlink RM Blaster 1.7.1
+# Broadlink RM Blaster 1.8.0
 
 **This Homebridge plugin has been 100% vibe coded with Claude.**
 
@@ -74,6 +74,12 @@ accessory turns on or off, however it was triggered. It is retained unless
 you untick "Retain state messages" on that accessory, so a subscriber
 connecting later immediately gets the last known state. Commands are JSON,
 and anything left out is not changed.
+
+Every publish - state messages and sensor readings alike - also carries a
+`last_seen` field, similar to zigbee2mqtt. Set the format ("last_seen
+Format" in the MQTT settings) to ISO 8601 UTC (default), ISO 8601 local
+time, epoch milliseconds, or disable it entirely. Each RM device can
+override the format for its own sensor readings.
 
 ### Simple on/off accessories, advanced accessories and TVs
 

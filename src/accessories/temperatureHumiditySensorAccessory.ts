@@ -1,6 +1,7 @@
 import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
 
 import type { BroadlinkRMBlasterPlatform } from '../platform';
+import type { LastSeenFormat } from '../mqttLastSeen';
 
 const POLL_INTERVAL_MS = 60_000;
 
@@ -20,6 +21,7 @@ export class TemperatureHumiditySensorAccessory {
     private readonly deviceName: string,
     private readonly publishToMqtt: boolean,
     private readonly retain: boolean,
+    private readonly lastSeenFormat?: LastSeenFormat,
   ) {
     if (this.accessory) {
       const temperatureService = this.accessory.getService(this.platform.Service.TemperatureSensor)
@@ -82,7 +84,7 @@ export class TemperatureHumiditySensorAccessory {
       }
 
       if (this.publishToMqtt) {
-        this.platform.mqtt.publishReading(this.deviceName, temperature, humidity, this.retain);
+        this.platform.mqtt.publishReading(this.deviceName, temperature, humidity, this.retain, this.lastSeenFormat);
       }
     } catch (error) {
       this.platform.log.warn(`Failed to read temperature/humidity from ${this.ip}: ${(error as Error).message}`);
