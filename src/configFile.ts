@@ -34,6 +34,47 @@ export function writeConfigAtomically(configPath: string, config: HomebridgeConf
   fs.renameSync(tempPath, configPath);
 }
 
+export interface MigrateMqttSettingsResult {
+  config: BlasterPlatformConfig;
+  changes: string[];
+  // Keys that no longer belong in the file at all - the caller has to
+  // delete these off the real config object, since dropping them from a
+  // copy wouldn't remove them from what gets written back.
+  removedKeys: string[];
+}
+
+// The MQTT broker used to be two fields (host + port) and credentials had
+// no "does this broker need auth?" flag at all. Both are now one field and
+// a checkbox, so fold an older config over to the new shape rather than
+// carrying two ways of reading the same setting forever. Pure, so it can be
+// unit-tested; the caller does the file I/O.
+export function migrateMqttSettings(platformConfig: BlasterPlatformConfig): MigrateMqttSettingsResult {
+  const config: BlasterPlatformConfig = { ...platformConfig };
+  const changes: string[] = [];
+  const removedKeys: string[] = [];
+
+  const host = (config.mqttHost ?? '').trim();
+  const port = config.mqttPort;
+  if (port !== undefined) {
+    // Only fold the port in if the host isn't already carrying one, so a
+    // second run can't produce "host:1883:1883".
+    if (host && !host.includes(':')) {
+      config.mqttHost = `${host}:${port}`;
+      changes.push(`folded the MQTT port into the broker address ("${config.mqttHost}")`);
+    }
+    delete config.mqttPort;
+    removedKeys.push('mqttPort');
+  }
+
+  if (config.mqttRequiresAuth === undefined) {
+    const hasCredentials = !!(config.mqttUsername ?? '').trim() || !!(config.mqttPassword ?? '').trim();
+    config.mqttRequiresAuth = hasCredentials;
+    changes.push(`set "Broker requires authentication" to ${hasCredentials ? 'on' : 'off'}`);
+  }
+
+  return { config, changes, removedKeys };
+}
+
 export interface StripBlankEntriesResult {
   config: BlasterPlatformConfig;
   removed: string[];
