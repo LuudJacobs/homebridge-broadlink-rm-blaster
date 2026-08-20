@@ -20,19 +20,20 @@
         "description": "Publish temperature/humidity readings from RM devices to an MQTT broker."
       },
       "mqttHost": {
-        "title": "Host",
+        "title": "Broker",
         "type": "string",
-        "default": "localhost",
+        "default": "localhost:1883",
+        "placeholder": "localhost:1883",
         "required": false,
-        "description": "Broker hostname or IP address.",
+        "description": "Broker hostname or IP address, optionally followed by a port. Without one, port 1883 is used.",
         "condition": {
           "functionBody": "return model.enableMqtt === true;"
         }
       },
-      "mqttPort": {
-        "title": "Port",
-        "type": "integer",
-        "default": 1883,
+      "mqttRequiresAuth": {
+        "title": "Broker requires authentication",
+        "type": "boolean",
+        "default": false,
         "required": false,
         "condition": {
           "functionBody": "return model.enableMqtt === true;"
@@ -43,7 +44,7 @@
         "type": "string",
         "required": false,
         "condition": {
-          "functionBody": "return model.enableMqtt === true;"
+          "functionBody": "return model.enableMqtt === true && model.mqttRequiresAuth === true;"
         }
       },
       "mqttPassword": {
@@ -51,7 +52,7 @@
         "type": "string",
         "required": false,
         "condition": {
-          "functionBody": "return model.enableMqtt === true;"
+          "functionBody": "return model.enableMqtt === true && model.mqttRequiresAuth === true;"
         }
       },
       "mqttBaseTopic": {
@@ -897,7 +898,7 @@
       "items": [
         "enableMqtt",
         "mqttHost",
-        "mqttPort",
+        "mqttRequiresAuth",
         "mqttUsername",
         {
           "key": "mqttPassword",

@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.10.0] - 2026-08-21
+
+### Changed
+- MQTT settings: the broker is now a single "Broker" field taking `host:port`
+  (default `localhost:1883`) rather than separate Host and Port fields, and
+  Username/Password only appear once a new "Broker requires authentication"
+  checkbox is ticked.
+- An existing config is folded over to the new shape automatically on startup -
+  the old port is merged into the broker address and the authentication checkbox
+  is set from whether credentials were already filled in. `config.json` is backed
+  up to `config.json.backup` first, same as the existing blank-row cleanup, and
+  nothing is written when there's nothing to change.
+
 ## [1.9.0] - 2026-08-21
 
 ### Added
