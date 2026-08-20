@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+- Simple on/off accessories, advanced accessories, TVs and fans: a "Minimum Time
+  Between Switching On and Off" option (default 1 second). A signal that arrives
+  before that much time has passed since the last accepted one is ignored, and the
+  Home app tile is snapped back to reflect the real, unchanged state. An MQTT command
+  received during that window isn't dropped the same way - since there's no tile to
+  snap back - it's held instead and applied once the window clears, with the most
+  recently received value winning if more than one arrives before then.
+
 ## [1.8.0] - 2026-08-19
 
 ### Added
