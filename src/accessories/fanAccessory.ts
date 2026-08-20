@@ -4,13 +4,18 @@ import type { BroadlinkRMBlasterPlatform } from '../platform';
 import type { FanAccessoryConfig, FanModeConfig } from '../configTypes';
 import { MqttLink } from '../mqttLink';
 import type { MqttCommand } from '../mqttCommand';
+import { SwitchCooldown } from '../switchCooldown';
 
 const DEFAULT_PRESS_INTERVAL_SECONDS = 0.5;
 const DEFAULT_SPEED_DEBOUNCE_SECONDS = 0.5;
+const DEFAULT_SWITCH_COOLDOWN_SECONDS = 1;
 
 // Long enough that HomeKit's own optimistic UI doesn't ignore the update
 // that puts a momentary switch back to off.
 const RESYNC_RESET_DELAY_MS = 1000;
+
+// Same lesson, for a signal refused by the switch cooldown instead.
+const REJECT_RESET_DELAY_MS = 1000;
 
 // Kept distinct from a feature's subtype, which is just its name.
 const RESYNC_SUBTYPE = '__resync';
@@ -76,6 +81,7 @@ export class FanAccessory {
   private readonly speedCount: number;
   private readonly modes: FanModeConfig[];
   private readonly mqtt: MqttLink;
+  private readonly cooldown: SwitchCooldown;
   private swingSwitchService?: Service;
   private speedDebounceTimer?: NodeJS.Timeout;
   private pendingSpeedPercent?: number;
@@ -91,6 +97,7 @@ export class FanAccessory {
     this.speedDebounceMs = (this.config.speedDebounceSeconds ?? DEFAULT_SPEED_DEBOUNCE_SECONDS) * 1000;
     this.speedCount = this.config.speedCount ?? 1;
     this.modes = this.usableModes();
+    this.cooldown = new SwitchCooldown((this.config.switchCooldownSeconds ?? DEFAULT_SWITCH_COOLDOWN_SECONDS) * 1000);
 
     // getService() returns the first match for a UUID regardless of
     // subtype, so find the fan by its lack of one.
@@ -155,11 +162,11 @@ export class FanAccessory {
     if (command.state === 'off') {
       // Off wins outright; a speed alongside it would just switch the fan
       // straight back on.
-      await this.setActive(this.platform.Characteristic.Active.INACTIVE);
+      await this.applyMqttActive(false);
       return;
     }
     if (command.state === 'on') {
-      await this.setActive(this.platform.Characteristic.Active.ACTIVE);
+      await this.applyMqttActive(true);
     }
     if (command.speedPercent !== undefined && this.speedCount > 1) {
       await this.applySpeedPercent(command.speedPercent);
@@ -167,6 +174,20 @@ export class FanAccessory {
     if (command.swing !== undefined) {
       await this.applySwing(command.swing);
     }
+  }
+
+  // A command inside the switch cooldown window isn't dropped, same as a
+  // HomeKit one isn't - the first one in a window is held and applied once
+  // it clears (see SwitchCooldown.applyWhenReady). No onRefused here, since
+  // there's no tile to visually snap back for an MQTT-originated command.
+  private applyMqttActive(on: boolean): Promise<void> {
+    return this.cooldown.applyWhenReady(
+      Date.now(),
+      on,
+      (v) => this.setActive(v ? this.platform.Characteristic.Active.ACTIVE : this.platform.Characteristic.Active.INACTIVE),
+      undefined,
+      (error) => this.platform.log.error(`Failed to apply a deferred MQTT On/Off to "${this.config.name}": ${(error as Error).message}`),
+    );
   }
 
   // A feature's name becomes its service subtype, and HomeKit rejects a
@@ -293,6 +314,10 @@ export class FanAccessory {
 
   private resyncState(): void {
     this.cancelPendingSpeed();
+    // A resync abandons a held on/off signal too - it exists to forget
+    // everything the plugin assumes, and firing a queued signal moments
+    // later would immediately contradict that.
+    this.cooldown.cancelPending();
     this.accessory.context.on = false;
     this.accessory.context.speedLevel = 0;
     this.accessory.context.speedEntered = false;
@@ -386,10 +411,38 @@ export class FanAccessory {
   private setActiveFromHomeKit(value: CharacteristicValue): void | Promise<void> {
     const wantOn = value === this.platform.Characteristic.Active.ACTIVE;
     if (!wantOn || this.speedCount <= 1) {
-      return this.setActive(value);
+      return this.setActiveGated(value);
     }
     this.pendingActive = true;
     this.scheduleSpeedApply();
+  }
+
+  // The switch-cooldown gate for a HomeKit-originated transition: a signal
+  // within the minimum switch interval is refused - the tile snaps back to
+  // its real (unchanged) state shortly after, same lesson as every other
+  // auto-resetting switch in this codebase - but it isn't just dropped:
+  // the first refused signal in a window is still held and applied once
+  // the window clears (see SwitchCooldown.applyWhenReady). Shared by the
+  // immediate path above and the slider-debounce settle callback below,
+  // since both are "about to actually flip power" decision points.
+  private async setActiveGated(value: CharacteristicValue): Promise<void> {
+    const wantOn = value === this.platform.Characteristic.Active.ACTIVE;
+    if (wantOn === this.isOn()) {
+      return;
+    }
+    await this.cooldown.applyWhenReady(
+      Date.now(),
+      wantOn,
+      (v) => this.setActive(v ? this.platform.Characteristic.Active.ACTIVE : this.platform.Characteristic.Active.INACTIVE),
+      () => {
+        this.platform.log.warn(`Deferring ${wantOn ? 'On' : 'Off'} for "${this.config.name}" - within the minimum switch interval.`);
+        setTimeout(
+          () => this.fanService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive()),
+          REJECT_RESET_DELAY_MS,
+        );
+      },
+      (error) => this.platform.log.error(`Failed to apply a deferred On/Off to "${this.config.name}": ${(error as Error).message}`),
+    );
   }
 
   private async setActive(value: CharacteristicValue): Promise<void> {
@@ -595,7 +648,9 @@ export class FanAccessory {
       if (percent !== undefined) {
         void this.applySpeedPercent(percent);
       } else if (wantOn) {
-        void this.setActive(this.platform.Characteristic.Active.ACTIVE);
+        void this.setActiveGated(this.platform.Characteristic.Active.ACTIVE).catch((error) => {
+          this.platform.log.error(`Failed to turn on "${this.config.name}": ${(error as Error).message}`);
+        });
       }
     }, this.speedDebounceMs);
   }

@@ -1,10 +1,12 @@
-import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
+import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 
 import type { BroadlinkRMBlasterPlatform } from '../platform';
 import type { AdvancedAccessoryConfig } from '../configTypes';
 import { MqttLink } from '../mqttLink';
+import { SwitchCooldown } from '../switchCooldown';
 
 const DEFAULT_TIMEOUT_SECONDS = 0.5;
+const DEFAULT_SWITCH_COOLDOWN_SECONDS = 1;
 
 // How long to wait before resetting an auto-resetting (no offCode) trigger
 // back to off. Not a stylistic choice - HomeKit's own optimistic UI update
@@ -20,7 +22,9 @@ function sleep(ms: number): Promise<void> {
 }
 
 export class AdvancedAccessory {
+  private readonly service: Service;
   private readonly mqtt: MqttLink;
+  private readonly cooldown: SwitchCooldown;
 
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
@@ -30,16 +34,25 @@ export class AdvancedAccessory {
   ) {
     const service = this.accessory.getService(this.platform.Service.Switch)
       ?? this.accessory.addService(this.platform.Service.Switch);
+    this.service = service;
     service.setCharacteristic(this.platform.Characteristic.Name, this.config.name);
+    this.cooldown = new SwitchCooldown((this.config.switchCooldownSeconds ?? DEFAULT_SWITCH_COOLDOWN_SECONDS) * 1000);
+
     service.getCharacteristic(this.platform.Characteristic.On)
       .onGet(() => this.getOn())
-      .onSet((value) => this.setOn(value));
+      .onSet((value) => this.setOnFromHomeKit(value));
 
-    this.mqtt = new MqttLink(platform, config.name, config, async (command) => {
-      if (command.state !== undefined) {
-        await this.setOn(command.state === 'on');
-        service.updateCharacteristic(this.platform.Characteristic.On, this.getOn());
+    this.mqtt = new MqttLink(platform, config.name, config, (command) => {
+      if (command.state === undefined) {
+        return;
       }
+      return this.cooldown.applyWhenReady(
+        Date.now(),
+        command.state === 'on',
+        (on) => this.applySetOn(on),
+        undefined,
+        (error) => this.platform.log.error(`Failed to apply a deferred MQTT On/Off to "${this.config.name}": ${(error as Error).message}`),
+      );
     });
   }
 
@@ -49,9 +62,25 @@ export class AdvancedAccessory {
     return Boolean(this.accessory.context.on);
   }
 
-  private async setOn(value: CharacteristicValue): Promise<void> {
+  // Unlike the other accessory types, a same-direction repeat isn't a no-op
+  // here - every accepted On re-fires the signal sequence, which is exactly
+  // what the cooldown needs to guard against, so it gates every accepted
+  // call rather than only genuine state flips.
+  private setOnFromHomeKit(value: CharacteristicValue): void | Promise<void> {
     const on = Boolean(value);
+    return this.cooldown.applyWhenReady(
+      Date.now(),
+      on,
+      (v) => this.applySetOn(v),
+      () => {
+        this.platform.log.warn(`Deferring ${on ? 'On' : 'Off'} for "${this.config.name}" - within the minimum switch interval.`);
+        setTimeout(() => this.service.updateCharacteristic(this.platform.Characteristic.On, this.getOn()), RESET_DELAY_MS);
+      },
+      (error) => this.platform.log.error(`Failed to apply a deferred On/Off to "${this.config.name}": ${(error as Error).message}`),
+    );
+  }
 
+  private async applySetOn(on: boolean): Promise<void> {
     if (!on) {
       await this.turnOff();
       return;
@@ -61,6 +90,7 @@ export class AdvancedAccessory {
       await this.sendSequence();
       this.accessory.context.on = true;
       this.mqtt.publishState(true);
+      this.service.updateCharacteristic(this.platform.Characteristic.On, true);
       this.platform.log.info(`Sent signal sequence to ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
@@ -78,6 +108,7 @@ export class AdvancedAccessory {
       // Momentary trigger - nothing to send, just reflect the state.
       this.accessory.context.on = false;
       this.mqtt.publishState(false);
+      this.service.updateCharacteristic(this.platform.Characteristic.On, false);
       return;
     }
 
@@ -85,6 +116,7 @@ export class AdvancedAccessory {
       await this.platform.broadlinkClient.sendCode(this.ip, this.config.offCode);
       this.accessory.context.on = false;
       this.mqtt.publishState(false);
+      this.service.updateCharacteristic(this.platform.Characteristic.On, false);
       this.platform.log.info(`Sent Off to ${this.config.name}`);
     } catch (error) {
       this.platform.log.error(`Failed to send code for "${this.config.name}": ${(error as Error).message}`);
@@ -109,8 +141,7 @@ export class AdvancedAccessory {
     setTimeout(() => {
       this.accessory.context.on = false;
       this.mqtt.publishState(false);
-      this.accessory.getService(this.platform.Service.Switch)
-        ?.updateCharacteristic(this.platform.Characteristic.On, false);
+      this.service.updateCharacteristic(this.platform.Characteristic.On, false);
     }, RESET_DELAY_MS);
   }
 }
