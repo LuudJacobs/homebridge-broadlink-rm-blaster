@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.9.0] - 2026-08-21
+
 ### Added
 - Simple on/off accessories, advanced accessories, TVs and fans: a "Minimum Time
   Between Switching On and Off" option (default 1 second). A signal that arrives
