@@ -248,7 +248,7 @@
               "minimum": 0,
               "default": 1,
               "required": false,
-              "description": "A signal that arrives before this much time has passed since the last accepted one is ignored, and the Home app tile is snapped back to reflect that."
+              "description": "A signal that arrives before this much time has passed since the last accepted one is held rather than sent straight away, and applied once the time is up. Any further signal in that same window is dropped."
             },
             "mqttSubscribe": {
               "title": "Control via MQTT",
@@ -310,7 +310,7 @@
               "minimum": 0,
               "default": 1,
               "required": false,
-              "description": "A signal that arrives before this much time has passed since the last accepted one is ignored, and the Home app tile is snapped back to reflect that."
+              "description": "A signal that arrives before this much time has passed since the last accepted one is held rather than sent straight away, and applied once the time is up. Any further signal in that same window is dropped."
             },
             "timeoutSeconds": {
               "title": "Timeout Between Signals (seconds)",
@@ -476,7 +476,7 @@
               "minimum": 0,
               "default": 1,
               "required": false,
-              "description": "A signal that arrives before this much time has passed since the last accepted one is ignored, and the Home app tile is snapped back to reflect that."
+              "description": "A signal that arrives before this much time has passed since the last accepted one is held rather than sent straight away, and applied once the time is up. Any further signal in that same window is dropped."
             },
             "onFollowUpName": {
               "title": "Signal After Power On - Name",
@@ -780,7 +780,7 @@
               "minimum": 0,
               "default": 1,
               "required": false,
-              "description": "A signal that arrives before this much time has passed since the last accepted one is ignored, and the Home app tile is snapped back to reflect that."
+              "description": "A signal that arrives before this much time has passed since the last accepted one is held rather than sent straight away, and applied once the time is up. Any further signal in that same window is dropped."
             },
             "volumeUpCode": {
               "title": "Volume Up Signal",

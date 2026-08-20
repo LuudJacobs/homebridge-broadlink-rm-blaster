@@ -79,13 +79,13 @@ export class TvAccessory {
       if (command.state === undefined) {
         return;
       }
-      return this.cooldown.applyWhenReady(Date.now(), command.state === 'on', async (on) => {
-        try {
-          await this.applySetActive(on);
-        } catch (error) {
-          this.platform.log.error(`Failed to apply MQTT On/Off to "${this.config.name}": ${(error as Error).message}`);
-        }
-      });
+      return this.cooldown.applyWhenReady(
+        Date.now(),
+        command.state === 'on',
+        (on) => this.applySetActive(on),
+        undefined,
+        (error) => this.platform.log.error(`Failed to apply a deferred MQTT On/Off to "${this.config.name}": ${(error as Error).message}`),
+      );
     });
 
     // We don't have real inputs (channels/apps) to switch between - this
@@ -144,25 +144,31 @@ export class TvAccessory {
     return Boolean(this.accessory.context.muted);
   }
 
-  // Refuses a signal that arrives within the minimum switch interval,
-  // snapping the tile back to its real (unchanged) state shortly after -
-  // same "HomeKit's optimistic UI needs a real delay" lesson as every other
-  // auto-resetting switch in this codebase. A same-state request is a pure
-  // no-op and never touches the cooldown at all.
+  // A signal within the minimum switch interval is refused - the tile
+  // snaps back to its real (unchanged) state shortly after, same
+  // "HomeKit's optimistic UI needs a real delay" lesson as every other
+  // auto-resetting switch in this codebase - but it isn't just dropped:
+  // the first refused signal in a window is still held and applied once
+  // the window clears (see SwitchCooldown.applyWhenReady). A same-state
+  // request is a pure no-op and never touches the cooldown at all.
   private setActiveFromHomeKit(value: CharacteristicValue): void | Promise<void> {
     const on = value === this.platform.Characteristic.Active.ACTIVE;
     if (on === Boolean(this.accessory.context.active)) {
       return;
     }
-    if (!this.cooldown.tryAcceptNow(Date.now())) {
-      this.platform.log.warn(`Ignoring ${on ? 'On' : 'Off'} for "${this.config.name}" - within the minimum switch interval.`);
-      setTimeout(
-        () => this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive()),
-        REJECT_RESET_DELAY_MS,
-      );
-      return;
-    }
-    return this.applySetActive(on);
+    return this.cooldown.applyWhenReady(
+      Date.now(),
+      on,
+      (v) => this.applySetActive(v),
+      () => {
+        this.platform.log.warn(`Deferring ${on ? 'On' : 'Off'} for "${this.config.name}" - within the minimum switch interval.`);
+        setTimeout(
+          () => this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive()),
+          REJECT_RESET_DELAY_MS,
+        );
+      },
+      (error) => this.platform.log.error(`Failed to apply a deferred On/Off to "${this.config.name}": ${(error as Error).message}`),
+    );
   }
 
   private async applySetActive(on: boolean): Promise<void> {
