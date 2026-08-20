@@ -23,6 +23,9 @@ export interface BasicAccessoryConfig {
   accessoryType: BasicAccessoryType;
   powerOnCode: string;
   powerOffCode?: string;
+  // Minimum time between accepting a real on/off transition. Defaults to 1
+  // second when unset.
+  switchCooldownSeconds?: number;
   // Listens for commands on <mqttBaseTopic>/<mqttTopic>/set and publishes
   // its on/off state to <mqttBaseTopic>/<mqttTopic>. Needs the platform's
   // MQTT settings to be filled in and enabled.
@@ -70,6 +73,9 @@ export interface AdvancedAccessoryConfig {
   signals: AdvancedSignalConfig[];
   offCode?: string;
   timeoutSeconds?: number;
+  // Minimum time between accepting a real on/off transition. Defaults to 1
+  // second when unset.
+  switchCooldownSeconds?: number;
   // Listens for commands on <mqttBaseTopic>/<mqttTopic>/set and publishes
   // its on/off state to <mqttBaseTopic>/<mqttTopic>. Needs the platform's
   // MQTT settings to be filled in and enabled.
@@ -127,6 +133,9 @@ export interface FanAccessoryConfig {
   powerToggleCode?: string;
   powerOnCode?: string;
   powerOffCode?: string;
+  // Minimum time between accepting a real on/off transition. Defaults to 1
+  // second when unset.
+  switchCooldownSeconds?: number;
 
   // A signal sent every time the fan is turned on, e.g. maxing out a
   // heater's thermostat.
@@ -166,6 +175,9 @@ export interface TvAccessoryConfig {
   rmDevice: string;
   powerOnCode: string;
   powerOffCode?: string;
+  // Minimum time between accepting a real on/off transition. Defaults to 1
+  // second when unset.
+  switchCooldownSeconds?: number;
   volumeUpCode?: string;
   volumeDownCode?: string;
   muteCode?: string;
