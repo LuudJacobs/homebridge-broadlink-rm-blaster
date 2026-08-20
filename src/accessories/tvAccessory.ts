@@ -1,9 +1,16 @@
-import type { CharacteristicValue, PlatformAccessory } from 'homebridge';
+import type { CharacteristicValue, PlatformAccessory, Service } from 'homebridge';
 
 import type { BroadlinkRMBlasterPlatform } from '../platform';
 import { MqttLink } from '../mqttLink';
 import type { TvAccessoryConfig } from '../configTypes';
 import { powerSignalName, selectPowerCode } from './basicAccessory';
+import { SwitchCooldown } from '../switchCooldown';
+
+const DEFAULT_SWITCH_COOLDOWN_SECONDS = 1;
+
+// Long enough that HomeKit's own optimistic UI doesn't ignore the update
+// that snaps a refused switch back to its real state.
+const REJECT_RESET_DELAY_MS = 1000;
 
 export interface RemoteKeyResolution {
   signalName: string;
@@ -41,6 +48,8 @@ const PLACEHOLDER_INPUT_IDENTIFIER = 1;
 
 export class TvAccessory {
   private readonly mqtt: MqttLink;
+  private readonly cooldown: SwitchCooldown;
+  private readonly tvService: Service;
 
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
@@ -49,9 +58,11 @@ export class TvAccessory {
     private readonly ip: string,
   ) {
     accessory.category = this.platform.api.hap.Categories.TELEVISION;
+    this.cooldown = new SwitchCooldown((this.config.switchCooldownSeconds ?? DEFAULT_SWITCH_COOLDOWN_SECONDS) * 1000);
 
     const tvService = this.accessory.getService(this.platform.Service.Television)
       ?? this.accessory.addService(this.platform.Service.Television);
+    this.tvService = tvService;
     tvService.setCharacteristic(this.platform.Characteristic.ConfiguredName, this.config.name);
     tvService.setCharacteristic(this.platform.Characteristic.Name, this.config.name);
     tvService.setCharacteristic(
@@ -62,15 +73,19 @@ export class TvAccessory {
 
     tvService.getCharacteristic(this.platform.Characteristic.Active)
       .onGet(() => this.getActive())
-      .onSet((value) => this.setActive(value));
+      .onSet((value) => this.setActiveFromHomeKit(value));
 
-    this.mqtt = new MqttLink(this.platform, this.config.name, this.config, async (command) => {
-      if (command.state !== undefined) {
-        await this.setActive(command.state === 'on'
-          ? this.platform.Characteristic.Active.ACTIVE
-          : this.platform.Characteristic.Active.INACTIVE);
-        tvService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive());
+    this.mqtt = new MqttLink(this.platform, this.config.name, this.config, (command) => {
+      if (command.state === undefined) {
+        return;
       }
+      return this.cooldown.applyWhenReady(Date.now(), command.state === 'on', async (on) => {
+        try {
+          await this.applySetActive(on);
+        } catch (error) {
+          this.platform.log.error(`Failed to apply MQTT On/Off to "${this.config.name}": ${(error as Error).message}`);
+        }
+      });
     });
 
     // We don't have real inputs (channels/apps) to switch between - this
@@ -129,12 +144,33 @@ export class TvAccessory {
     return Boolean(this.accessory.context.muted);
   }
 
-  private async setActive(value: CharacteristicValue): Promise<void> {
+  // Refuses a signal that arrives within the minimum switch interval,
+  // snapping the tile back to its real (unchanged) state shortly after -
+  // same "HomeKit's optimistic UI needs a real delay" lesson as every other
+  // auto-resetting switch in this codebase. A same-state request is a pure
+  // no-op and never touches the cooldown at all.
+  private setActiveFromHomeKit(value: CharacteristicValue): void | Promise<void> {
     const on = value === this.platform.Characteristic.Active.ACTIVE;
+    if (on === Boolean(this.accessory.context.active)) {
+      return;
+    }
+    if (!this.cooldown.tryAcceptNow(Date.now())) {
+      this.platform.log.warn(`Ignoring ${on ? 'On' : 'Off'} for "${this.config.name}" - within the minimum switch interval.`);
+      setTimeout(
+        () => this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive()),
+        REJECT_RESET_DELAY_MS,
+      );
+      return;
+    }
+    return this.applySetActive(on);
+  }
+
+  private async applySetActive(on: boolean): Promise<void> {
     const code = selectPowerCode(this.config, on);
     await this.send(code, powerSignalName(this.config, on));
     this.accessory.context.active = on;
     this.mqtt.publishState(on);
+    this.tvService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive());
   }
 
   private async handleRemoteKey(value: CharacteristicValue): Promise<void> {
