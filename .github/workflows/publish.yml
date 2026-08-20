@@ -1,0 +1,37 @@
+name: Publish to npm
+
+# Triggered by the version tag pushed on main at release time (see the
+# release steps in CLAUDE.md/todo.md) - "v*" specifically, not "*", so
+# moving the "latest" tag afterward doesn't retrigger a publish of an
+# already-published version.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  # Required for npm's OIDC trusted publishing - no NPM_TOKEN in this repo.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      # Trusted publishing needs a recent npm CLI - newer than what some
+      # setup-node/Node combinations bundle by default.
+      - run: npm install -g npm@latest
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+      - run: npm publish --provenance
