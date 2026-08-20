@@ -46,13 +46,13 @@ export class AdvancedAccessory {
       if (command.state === undefined) {
         return;
       }
-      return this.cooldown.applyWhenReady(Date.now(), command.state === 'on', async (on) => {
-        try {
-          await this.applySetOn(on);
-        } catch (error) {
-          this.platform.log.error(`Failed to apply MQTT On/Off to "${this.config.name}": ${(error as Error).message}`);
-        }
-      });
+      return this.cooldown.applyWhenReady(
+        Date.now(),
+        command.state === 'on',
+        (on) => this.applySetOn(on),
+        undefined,
+        (error) => this.platform.log.error(`Failed to apply a deferred MQTT On/Off to "${this.config.name}": ${(error as Error).message}`),
+      );
     });
   }
 
@@ -68,12 +68,16 @@ export class AdvancedAccessory {
   // call rather than only genuine state flips.
   private setOnFromHomeKit(value: CharacteristicValue): void | Promise<void> {
     const on = Boolean(value);
-    if (!this.cooldown.tryAcceptNow(Date.now())) {
-      this.platform.log.warn(`Ignoring ${on ? 'On' : 'Off'} for "${this.config.name}" - within the minimum switch interval.`);
-      setTimeout(() => this.service.updateCharacteristic(this.platform.Characteristic.On, this.getOn()), RESET_DELAY_MS);
-      return;
-    }
-    return this.applySetOn(on);
+    return this.cooldown.applyWhenReady(
+      Date.now(),
+      on,
+      (v) => this.applySetOn(v),
+      () => {
+        this.platform.log.warn(`Deferring ${on ? 'On' : 'Off'} for "${this.config.name}" - within the minimum switch interval.`);
+        setTimeout(() => this.service.updateCharacteristic(this.platform.Characteristic.On, this.getOn()), RESET_DELAY_MS);
+      },
+      (error) => this.platform.log.error(`Failed to apply a deferred On/Off to "${this.config.name}": ${(error as Error).message}`),
+    );
   }
 
   private async applySetOn(on: boolean): Promise<void> {

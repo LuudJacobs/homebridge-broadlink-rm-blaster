@@ -12,10 +12,7 @@ export class SwitchCooldown {
     return now - this.lastAcceptedAt >= this.cooldownMs;
   }
 
-  // HomeKit path: a signal inside the window is simply refused. Only a
-  // signal that's actually accepted resets the window - a burst of refused
-  // taps never pushes it out further.
-  tryAcceptNow(now: number): boolean {
+  private tryAcceptNow(now: number): boolean {
     if (!this.isReady(now)) {
       return false;
     }
@@ -23,17 +20,29 @@ export class SwitchCooldown {
     return true;
   }
 
-  // MQTT path: nothing to visually snap back, so instead of refusing, hold
-  // the latest requested value and apply it once the window clears. A
-  // second call before then just replaces the held value - the most recent
-  // one wins, and it still doesn't push the window out further.
-  async applyWhenReady(now: number, value: boolean, apply: (value: boolean) => Promise<void> | void): Promise<void> {
+  // Applies immediately if the cooldown has cleared - a failure there
+  // propagates to the caller exactly as an unthrottled call would. Otherwise
+  // the signal is refused - onRefused fires so a caller can react (e.g.
+  // snap a HomeKit tile back to its real state) - but it isn't just
+  // dropped: the *first* refused signal in a window is held and applied
+  // once the window clears. Any further signal during that same window is
+  // refused the same way but dropped entirely rather than replacing the
+  // held one - the first signal during a window is the one that eventually
+  // takes effect. A failure from that later, deferred apply has nobody left
+  // to propagate to, so it goes to onDeferredError instead of rejecting.
+  async applyWhenReady(
+    now: number,
+    value: boolean,
+    apply: (value: boolean) => Promise<void> | void,
+    onRefused?: () => void,
+    onDeferredError?: (error: unknown) => void,
+  ): Promise<void> {
     if (this.tryAcceptNow(now)) {
       await apply(value);
       return;
     }
+    onRefused?.();
     if (this.pending) {
-      this.pending.value = value;
       return;
     }
     const wait = this.cooldownMs - (now - this.lastAcceptedAt);
@@ -43,7 +52,16 @@ export class SwitchCooldown {
         const heldValue = this.pending!.value;
         this.pending = undefined;
         this.lastAcceptedAt = Date.now();
-        void apply(heldValue);
+        // A wrapping async IIFE (rather than Promise.resolve(apply(...))
+        // directly) so a *synchronous* throw from apply() is caught the
+        // same way as an async rejection would be.
+        (async () => {
+          try {
+            await apply(heldValue);
+          } catch (error) {
+            onDeferredError?.(error);
+          }
+        })();
       }, wait),
     };
   }

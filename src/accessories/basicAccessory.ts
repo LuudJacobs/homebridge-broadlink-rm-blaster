@@ -56,13 +56,13 @@ export class BasicAccessory {
       if (command.state === undefined) {
         return;
       }
-      return this.cooldown.applyWhenReady(Date.now(), command.state === 'on', async (on) => {
-        try {
-          await this.applySetOn(on);
-        } catch (error) {
-          this.platform.log.error(`Failed to apply MQTT On/Off to "${this.config.name}": ${(error as Error).message}`);
-        }
-      });
+      return this.cooldown.applyWhenReady(
+        Date.now(),
+        command.state === 'on',
+        (on) => this.applySetOn(on),
+        undefined,
+        (error) => this.platform.log.error(`Failed to apply a deferred MQTT On/Off to "${this.config.name}": ${(error as Error).message}`),
+      );
     });
   }
 
@@ -90,22 +90,28 @@ export class BasicAccessory {
     return Boolean(this.accessory.context.on);
   }
 
-  // Refuses a signal that arrives within the minimum switch interval,
-  // snapping the tile back to its real (unchanged) state shortly after -
-  // same "HomeKit's optimistic UI needs a real delay" lesson as every other
-  // auto-resetting switch in this codebase. A same-state request is a pure
-  // no-op and never touches the cooldown at all.
+  // A signal within the minimum switch interval is refused - the tile
+  // snaps back to its real (unchanged) state shortly after, same
+  // "HomeKit's optimistic UI needs a real delay" lesson as every other
+  // auto-resetting switch in this codebase - but it isn't just dropped:
+  // the first refused signal in a window is still held and applied once
+  // the window clears (see SwitchCooldown.applyWhenReady). A same-state
+  // request is a pure no-op and never touches the cooldown at all.
   private setOnFromHomeKit(value: CharacteristicValue): void | Promise<void> {
     const on = Boolean(value);
     if (on === this.getOn()) {
       return;
     }
-    if (!this.cooldown.tryAcceptNow(Date.now())) {
-      this.platform.log.warn(`Ignoring ${on ? 'On' : 'Off'} for "${this.config.name}" - within the minimum switch interval.`);
-      setTimeout(() => this.service.updateCharacteristic(this.platform.Characteristic.On, this.getOn()), REJECT_RESET_DELAY_MS);
-      return;
-    }
-    return this.applySetOn(on);
+    return this.cooldown.applyWhenReady(
+      Date.now(),
+      on,
+      (v) => this.applySetOn(v),
+      () => {
+        this.platform.log.warn(`Deferring ${on ? 'On' : 'Off'} for "${this.config.name}" - within the minimum switch interval.`);
+        setTimeout(() => this.service.updateCharacteristic(this.platform.Characteristic.On, this.getOn()), REJECT_RESET_DELAY_MS);
+      },
+      (error) => this.platform.log.error(`Failed to apply a deferred On/Off to "${this.config.name}": ${(error as Error).message}`),
+    );
   }
 
   private async applySetOn(on: boolean): Promise<void> {
