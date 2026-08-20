@@ -15,8 +15,22 @@ import { NtfyNotifier } from './ntfyNotifier';
 import { DEFAULT_MQTT_BASE_TOPIC, MqttBridge } from './mqttClient';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 import { BlasterPlatformConfig } from './configTypes';
-import { backupConfig, findPlatformBlock, stripBlankEntries, writeConfigAtomically } from './configFile';
+import {
+  backupConfig,
+  findPlatformBlock,
+  migrateMqttSettings,
+  stripBlankEntries,
+  writeConfigAtomically,
+} from './configFile';
 import type { HomebridgeConfigFile } from './configFile';
+import { parseBrokerAddress } from './mqttBroker';
+
+// Whether an older config (with no "requires authentication" checkbox yet)
+// was filled in with credentials - the same inference the config migration
+// makes, so both agree before and after the file is migrated.
+function hasMqttCredentials(config: BlasterPlatformConfig): boolean {
+  return !!(config.mqttUsername ?? '').trim() || !!(config.mqttPassword ?? '').trim();
+}
 import { BasicAccessory } from './accessories/basicAccessory';
 import { AdvancedAccessory } from './accessories/advancedAccessory';
 import { DimmerAccessory } from './accessories/dimmerAccessory';
@@ -49,14 +63,19 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       deviceNames.set(rmDevice.ip, rmDevice.name);
     }
     this.notifier = new NtfyNotifier(this.log, blasterConfig.ntfyTopic, deviceNames);
+    // Runs before didFinishLaunching (where the config file itself gets
+    // migrated), so this has to resolve either shape - hence passing the
+    // legacy mqttPort through as the fallback.
+    const broker = parseBrokerAddress(blasterConfig.mqttHost, blasterConfig.mqttPort);
+    const requiresAuth = blasterConfig.mqttRequiresAuth ?? hasMqttCredentials(blasterConfig);
     this.mqtt = new MqttBridge(
       this.log,
       !!blasterConfig.enableMqtt,
-      blasterConfig.mqttHost,
-      blasterConfig.mqttPort,
+      broker?.host,
+      broker?.port,
       blasterConfig.mqttBaseTopic ?? DEFAULT_MQTT_BASE_TOPIC,
-      blasterConfig.mqttUsername,
-      blasterConfig.mqttPassword,
+      requiresAuth ? blasterConfig.mqttUsername : undefined,
+      requiresAuth ? blasterConfig.mqttPassword : undefined,
       blasterConfig.mqttLastSeenFormat,
     );
     this.broadlinkClient = new BroadlinkClient(this.log, this.notifier);
@@ -81,11 +100,14 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
     return true;
   }
 
-  // The Config UI X form can leave a blank row behind in config.json on
-  // save (see isBlankEntry above) - existing loads already skip those, but
-  // nothing made them go away from the file itself, so they pile up across
-  // saves. Rewrite the file to drop them, once, only when there is actually
-  // something to drop.
+  // Two jobs, both write-backs to config.json itself:
+  //   - the Config UI X form can leave a blank row behind on save (see
+  //     isBlankEntry above); existing loads already skip those, but nothing
+  //     made them go away from the file, so they pile up across saves;
+  //   - MQTT's broker/auth settings changed shape, so an older config gets
+  //     folded over once rather than being read two ways forever.
+  // Only writes when something actually changed, so a normal boot never
+  // touches the file or makes a backup.
   private cleanUpConfigFile(): void {
     try {
       const configPath = this.api.user.configPath();
@@ -94,16 +116,29 @@ export class BroadlinkRMBlasterPlatform implements DynamicPlatformPlugin {
       if (!platformBlock) {
         return;
       }
+
       const { config: cleaned, removed } = stripBlankEntries(platformBlock);
-      if (removed.length === 0) {
+      const { config: migrated, changes, removedKeys } = migrateMqttSettings(cleaned);
+      if (removed.length === 0 && changes.length === 0) {
         return;
       }
+
       backupConfig(configPath);
-      Object.assign(platformBlock, cleaned);
+      Object.assign(platformBlock, migrated);
+      // Object.assign can't express a deletion, so drop retired keys off
+      // the real object rather than the copy that was merged in.
+      for (const key of removedKeys) {
+        delete (platformBlock as Record<string, unknown>)[key];
+      }
       writeConfigAtomically(configPath, fileConfig);
-      this.log.info(`Cleaned up config.json: removed ${removed.join(', ')}. Backed up to config.json.backup.`);
+
+      const summary = [
+        ...(removed.length > 0 ? [`removed ${removed.join(', ')}`] : []),
+        ...changes,
+      ].join('; ');
+      this.log.info(`Updated config.json: ${summary}. Backed up to config.json.backup.`);
     } catch (error) {
-      this.log.warn(`Could not clean up blank config entries: ${(error as Error).message}`);
+      this.log.warn(`Could not update config.json: ${(error as Error).message}`);
     }
   }
 

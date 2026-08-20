@@ -207,8 +207,15 @@ export interface BlasterPlatformConfig extends PlatformConfig {
   tvs?: TvAccessoryConfig[];
   ntfyTopic?: string;
   enableMqtt?: boolean;
+  // The broker as "host:port"; the port half is optional and defaults to
+  // 1883. Older configs kept the port in mqttPort instead - that's migrated
+  // into here on startup, and still honoured as a fallback meanwhile.
   mqttHost?: string;
+  /** @deprecated Folded into mqttHost. Only read to migrate an older config. */
   mqttPort?: number;
+  // Whether the broker needs credentials. Undefined in an older config,
+  // where it's inferred from whether a username/password was filled in.
+  mqttRequiresAuth?: boolean;
   mqttUsername?: string;
   mqttPassword?: string;
   mqttBaseTopic?: string;

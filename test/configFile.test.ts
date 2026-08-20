@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { findPlatformBlock, stripBlankEntries } from '../src/configFile';
+import { findPlatformBlock, migrateMqttSettings, stripBlankEntries } from '../src/configFile';
 import type { BlasterPlatformConfig } from '../src/configTypes';
 
 test('findPlatformBlock finds the BroadlinkRMBlaster platform among others', () => {
@@ -94,4 +94,65 @@ test('stripBlankEntries is a no-op on an already-clean config', () => {
   const { removed } = stripBlankEntries(config);
 
   assert.deepEqual(removed, []);
+});
+
+test('migrateMqttSettings folds a separate port into the broker address and retires the old key', () => {
+  const { config, changes, removedKeys } = migrateMqttSettings({
+    ...baseConfig(),
+    mqttHost: 'localhost',
+    mqttPort: 8883,
+  });
+
+  assert.equal(config.mqttHost, 'localhost:8883');
+  assert.equal(config.mqttPort, undefined);
+  assert.deepEqual(removedKeys, ['mqttPort']);
+  assert.equal(changes.length, 2, 'the broker fold plus the inferred auth flag');
+});
+
+test('migrateMqttSettings infers the auth checkbox from existing credentials', () => {
+  const withCredentials = migrateMqttSettings({ ...baseConfig(), mqttUsername: 'user', mqttPassword: 'pw' });
+  assert.equal(withCredentials.config.mqttRequiresAuth, true);
+
+  const withoutCredentials = migrateMqttSettings({ ...baseConfig() });
+  assert.equal(withoutCredentials.config.mqttRequiresAuth, false);
+
+  const blankCredentials = migrateMqttSettings({ ...baseConfig(), mqttUsername: '  ', mqttPassword: '' });
+  assert.equal(blankCredentials.config.mqttRequiresAuth, false);
+});
+
+test('migrateMqttSettings never double-folds a port on a second run', () => {
+  // An address that already carries its port, with a stale mqttPort still
+  // sitting alongside it - the port must not be appended again.
+  const { config, removedKeys } = migrateMqttSettings({
+    ...baseConfig(),
+    mqttHost: 'localhost:1883',
+    mqttPort: 1883,
+  });
+
+  assert.equal(config.mqttHost, 'localhost:1883');
+  assert.deepEqual(removedKeys, ['mqttPort']);
+});
+
+test('migrateMqttSettings is a no-op on an already-migrated config', () => {
+  const { changes, removedKeys } = migrateMqttSettings({
+    ...baseConfig(),
+    mqttHost: 'localhost:1883',
+    mqttRequiresAuth: false,
+  });
+
+  assert.deepEqual(changes, []);
+  assert.deepEqual(removedKeys, []);
+});
+
+test('migrateMqttSettings leaves an explicit auth choice alone', () => {
+  // Credentials present but the user deliberately turned auth off.
+  const { config, changes } = migrateMqttSettings({
+    ...baseConfig(),
+    mqttHost: 'localhost:1883',
+    mqttRequiresAuth: false,
+    mqttUsername: 'user',
+  });
+
+  assert.equal(config.mqttRequiresAuth, false);
+  assert.deepEqual(changes, []);
 });
