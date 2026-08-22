@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.11.0] - 2026-08-22
+
 ### Changed
 - MQTT state messages now carry what an accessory actually is, not just whether
   it's on: a fan reports its `speed` and `swing`, a dimmer its `level`. The keys
