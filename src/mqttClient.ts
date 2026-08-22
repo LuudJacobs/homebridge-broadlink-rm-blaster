@@ -83,12 +83,15 @@ export class MqttBridge {
     return true;
   }
 
-  publishState(topic: string, on: boolean, retain: boolean): void {
+  // `body` is the accessory's own state (see buildStatePayload in
+  // mqttLink.ts); last_seen is stamped on here, after the caller has already
+  // decided whether the state actually changed.
+  publishState(topic: string, body: Record<string, unknown>, retain: boolean): void {
     if (!this.client) {
       return;
     }
     const stateTopic = this.deviceTopic(topic);
-    const payload = this.withLastSeen({ state: on ? 'ON' : 'OFF' }, this.defaultLastSeenFormat);
+    const payload = this.withLastSeen(body, this.defaultLastSeenFormat);
     this.client.publish(stateTopic, JSON.stringify(payload), { retain }, (error) => {
       if (error) {
         this.log.warn(`Failed to publish MQTT state to ${stateTopic}: ${error.message}`);

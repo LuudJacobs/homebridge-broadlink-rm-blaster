@@ -9,6 +9,32 @@ export interface MqttLinkConfig {
   mqttRetain?: boolean;
 }
 
+// What an accessory reports about itself. Everything but `on` is optional,
+// since only some accessory types have it - a plain switch has nothing else
+// to say, while a fan has a speed and a dimmer a level.
+export interface MqttState {
+  on: boolean;
+  speedPercent?: number;
+  levelPercent?: number;
+  swing?: boolean;
+}
+
+// Deliberately the same keys and value shapes parseMqttCommand accepts, so
+// what an accessory publishes can be fed straight back to it as a command.
+export function buildStatePayload(state: MqttState): Record<string, unknown> {
+  const payload: Record<string, unknown> = { state: state.on ? 'ON' : 'OFF' };
+  if (state.speedPercent !== undefined) {
+    payload.speed = Math.round(state.speedPercent);
+  }
+  if (state.levelPercent !== undefined) {
+    payload.level = Math.round(state.levelPercent);
+  }
+  if (state.swing !== undefined) {
+    payload.swing = state.swing ? 'ON' : 'OFF';
+  }
+  return payload;
+}
+
 // Ties one accessory to MQTT: listens for commands on <topic>/set and
 // publishes its on/off state to <topic>. A no-op unless the accessory asked
 // for it and MQTT itself is set up, so accessories can construct one
@@ -16,7 +42,7 @@ export interface MqttLinkConfig {
 export class MqttLink {
   private readonly topic?: string;
   private readonly retain: boolean = true;
-  private lastPublished?: boolean;
+  private lastPublished?: string;
 
   constructor(
     private readonly platform: BroadlinkRMBlasterPlatform,
@@ -60,14 +86,25 @@ export class MqttLink {
     });
   }
 
-  // Several things can change in one go - a fan resyncs every
-  // characteristic after any action - so only say something when the
-  // answer actually changed, rather than repeating it to the broker.
-  publishState(on: boolean): void {
-    if (!this.topic || on === this.lastPublished) {
+  // Takes a bare boolean for the accessory types that only have on/off to
+  // report, or the full state for the ones that carry more.
+  //
+  // Several things can change in one go - a fan resyncs every characteristic
+  // after any action - so only say something when the answer actually
+  // changed, rather than repeating it to the broker. The comparison is on
+  // the payload itself, so a speed or level change is a change; last_seen is
+  // added further down in MqttBridge, after this, so it can't defeat the
+  // check by differing every time.
+  publishState(state: boolean | MqttState): void {
+    if (!this.topic) {
       return;
     }
-    this.lastPublished = on;
-    this.platform.mqtt.publishState(this.topic, on, this.retain);
+    const payload = buildStatePayload(typeof state === 'boolean' ? { on: state } : state);
+    const serialized = JSON.stringify(payload);
+    if (serialized === this.lastPublished) {
+      return;
+    }
+    this.lastPublished = serialized;
+    this.platform.mqtt.publishState(this.topic, payload, this.retain);
   }
 }
