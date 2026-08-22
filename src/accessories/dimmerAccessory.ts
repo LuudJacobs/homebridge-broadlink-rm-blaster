@@ -154,6 +154,17 @@ export class DimmerAccessory {
     return Number(this.accessory.context.brightnessPercent ?? 0);
   }
 
+  // Always publishes both halves, so the level has to be settled in context
+  // before this is called - otherwise a state message would carry the
+  // previous brightness. The light keeps its level while off, same as
+  // HomeKit does, so an off state still reports the level it will return to.
+  private publishMqttState(): void {
+    this.mqtt.publishState({
+      on: Boolean(this.accessory.context.on),
+      levelPercent: Number(this.getBrightness()),
+    });
+  }
+
   private clearBrightnessDebounce(): void {
     if (this.brightnessDebounceTimer) {
       clearTimeout(this.brightnessDebounceTimer);
@@ -166,7 +177,7 @@ export class DimmerAccessory {
     this.brightnessActionId++;
     await this.send(this.config.zeroPercentCode, 'Off (Brightness 0%)');
     this.accessory.context.on = false;
-    this.mqtt.publishState(false);
+    this.publishMqttState();
   }
 
   private async setOn(value: CharacteristicValue): Promise<void> {
@@ -190,17 +201,20 @@ export class DimmerAccessory {
     // comment on brightnessActionId).
     await this.send(resolved.code, `Brightness ${nearestPercent}% (requested: ${resolved.percent}% of ${effectiveMax}%)`);
     this.accessory.context.on = true;
-    this.mqtt.publishState(true);
 
     if (this.brightnessActionId !== myActionId) {
       // A real Brightness request (e.g. dragging the slider straight up
       // from off) arrived while the send above was still in flight and has
       // already taken over - don't display this guessed level on top of it.
+      // It has already published its own state, level included.
       return;
     }
 
     this.accessory.context.brightnessPercent = resolved.percent;
     this.accessory.context.lastKnownLevel = resolved;
+    // Published only now that the level is settled, so the state message
+    // carries the level this power-on actually resolved to.
+    this.publishMqttState();
 
     this.accessory.getService(this.platform.Service.Lightbulb)
       ?.updateCharacteristic(this.platform.Characteristic.Brightness, resolved.percent);
@@ -219,9 +233,9 @@ export class DimmerAccessory {
     const effectiveMax = getEffectiveMaxPercent(this.config);
 
     this.accessory.context.on = true;
-    this.mqtt.publishState(true);
     this.accessory.context.brightnessPercent = requestedPercent;
     this.accessory.context.lastKnownLevel = resolved;
+    this.publishMqttState();
 
     this.clearBrightnessDebounce();
     const debounceMs = (this.config.debounceSeconds ?? DEFAULT_DEBOUNCE_SECONDS) * 1000;

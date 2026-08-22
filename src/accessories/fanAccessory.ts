@@ -785,7 +785,13 @@ export class FanAccessory {
   // One place to resync every characteristic after any action, since a
   // single press can change power, a feature and swing all at once.
   private pushState(): void {
-    this.mqtt.publishState(this.isOn());
+    // Speed and swing are only reported by a fan that actually has them,
+    // so a plain on/off fan still publishes a plain on/off state.
+    this.mqtt.publishState({
+      on: this.isOn(),
+      speedPercent: this.speedCount > 1 ? Number(this.getSpeedPercent()) : undefined,
+      swing: this.config.swingCode ? !!this.accessory.context.swingOn : undefined,
+    });
     this.fanService.updateCharacteristic(this.platform.Characteristic.Active, this.getActive());
     if (this.speedCount > 1) {
       this.fanService.updateCharacteristic(this.platform.Characteristic.RotationSpeed, this.getSpeedPercent());
