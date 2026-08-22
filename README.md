@@ -69,11 +69,14 @@ publishes its own on/off state to the same topic without `/set`:
 | Commands in | `broadlinkrm/bedroom-fan/set` |
 | State out | `broadlinkrm/bedroom-fan` |
 
-State is published as `{"state": "ON"}` or `{"state": "OFF"}` whenever the
-accessory turns on or off, however it was triggered. It is retained unless
-you untick "Retain state messages" on that accessory, so a subscriber
-connecting later immediately gets the last known state. Commands are JSON,
-and anything left out is not changed.
+An accessory publishes its state whenever anything about it changes, however
+that was triggered. State messages use the same keys as the commands below,
+so whatever an accessory says about itself can be sent straight back to it
+as a command. A fan reports its speed and swing, a dimmer its level, and
+everything else just its on/off state. It is retained unless you untick
+"Retain state messages" on that accessory, so a subscriber connecting later
+immediately gets the last known state. Commands are JSON, and anything left
+out is not changed.
 
 Every publish - state messages and sensor readings alike - also carries a
 `last_seen` field, similar to zigbee2mqtt. Set the format ("last_seen
@@ -117,6 +120,11 @@ override the format for its own sensor readings.
 `{"speed": 50}` on its own only changes the speed. `"state": "OFF"` turns
 the fan off and ignores the rest of the message. Retained messages are
 applied when the plugin connects.
+
+A fan only reports `speed` if it has more than one, and `swing` if it has a
+swing signal configured, so a plain on/off fan publishes a plain on/off
+state. A dimmer keeps its `level` while off, the same way the Home app does,
+so an off state still says which level it will come back to.
 
 ## Debugging
 

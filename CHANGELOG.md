@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+- MQTT state messages now carry what an accessory actually is, not just whether
+  it's on: a fan reports its `speed` and `swing`, a dimmer its `level`. The keys
+  match the ones commands already accept, so a published state can be sent
+  straight back as a command. Accessories with nothing else to report are
+  unchanged, and a fan only reports `speed`/`swing` if it has them.
+- Changing only a fan's speed or swing, or only a dimmer's level, now publishes a
+  state message - previously nothing was published, since only the on/off value
+  was compared. Repeats of an unchanged state are still suppressed.
+
 ## [1.10.0] - 2026-08-21
 
 ### Changed
