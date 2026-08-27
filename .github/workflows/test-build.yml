@@ -1,0 +1,59 @@
+name: Test build
+
+# Builds the plugin here so a test build can be installed on the Pi without
+# compiling on the device, and attaches the tarball to a rolling "test-build"
+# prerelease. Separate from publish.yml, which only fires on "v*" tags and
+# publishes to npm - this one never touches the npm registry.
+on:
+  push:
+    branches:
+      - test
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - run: npm ci
+
+      - run: npm run build
+
+      # Unique version per run so an install on the Pi never resolves to a
+      # cached copy of an earlier test build. --no-git-tag-version keeps this
+      # inside the runner: nothing is committed and nothing is tagged.
+      - name: Version this build
+        run: npm version prerelease --preid=test.${{ github.run_number }} --no-git-tag-version
+
+      - name: Pack
+        id: pack
+        run: |
+          npm pack
+          TARBALL="$(ls -1 ./*.tgz | head -n1 | xargs basename)"
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test-build
+          name: Test build
+          prerelease: true
+          files: '*.tgz'
+
+      - name: Install command
+        run: |
+          URL="https://github.com/${{ github.repository }}/releases/download/test-build/${{ steps.pack.outputs.tarball }}"
+          {
+            echo "## Install this test build on the Pi"
+            echo
+            echo '```bash'
+            echo "npm install $URL"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
