@@ -1,4 +1,4 @@
-# Broadlink RM Blaster 1.11.2
+# Broadlink RM Blaster 1.11.3
 
 **This Homebridge plugin has been 100% vibe coded with Claude.**
 

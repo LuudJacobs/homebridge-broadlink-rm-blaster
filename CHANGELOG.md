@@ -6,6 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.11.3] - 2026-08-27
+
+### Changed
+- Both CI workflows replaced with the shared Homebridge templates. The test-build
+  workflow now decides whether to skip by comparing the test branch's tree against
+  the default branch, rather than matching the commit message, and its install
+  one-liner downloads the tarball before installing. Repository tooling only -
+  the published package is unchanged from 1.11.2.
+
 ## [1.11.2] - 2026-08-27
 
 ### Changed
