@@ -6,10 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.11.2] - 2026-08-27
+
 ### Changed
 - The test-build CI workflow no longer runs for release commits, which never
   needed a test build, and now keeps only the newest tarball on the rolling
-  test-build prerelease.
+  test-build prerelease. Repository tooling only - the published package is
+  unchanged from 1.11.1.
 
 ## [1.11.1] - 2026-08-27
 
