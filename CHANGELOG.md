@@ -6,10 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.11.1] - 2026-08-27
+
 ### Added
 - CI workflow that builds a test build on every push to `test` and attaches the
   packed tarball to a rolling `test-build` prerelease, so it can be installed
-  without compiling on the target device.
+  without compiling on the target device. Repository tooling only - the published
+  package is unchanged from 1.11.0.
 
 ## [1.11.0] - 2026-08-22
 
