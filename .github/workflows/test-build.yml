@@ -54,6 +54,21 @@ jobs:
           prerelease: true
           files: '*.tgz'
 
+      # The rolling release would otherwise collect one tarball per push, making
+      # it easy to install a stale one by mistake. Keep only what this run built.
+      - name: Prune older test-build assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          KEEP='${{ steps.pack.outputs.tarball }}'
+          gh release view test-build --json assets -q '.assets[].name' > assets.txt
+          while read -r asset; do
+            [ -z "$asset" ] && continue
+            [ "$asset" = "$KEEP" ] && continue
+            echo "deleting $asset"
+            gh release delete-asset test-build "$asset" --yes
+          done < assets.txt
+
       - name: Install command
         run: |
           URL="https://github.com/${{ github.repository }}/releases/download/test-build/${{ steps.pack.outputs.tarball }}"
