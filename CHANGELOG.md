@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+- The test-build CI workflow no longer runs for release commits, which never
+  needed a test build.
+
 ## [1.11.1] - 2026-08-27
 
 ### Added
