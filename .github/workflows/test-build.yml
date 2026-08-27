@@ -15,6 +15,13 @@ permissions:
 
 jobs:
   build:
+    # The release flow puts a "Release vX.Y.Z" commit on test (the version bump)
+    # and then fast-forwards test onto main's release merge - two pushes, neither
+    # of which needs a test build: the code is already tested by that point.
+    # workflow_dispatch has no head_commit, so a manual run is never skipped.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      !startsWith(github.event.head_commit.message, 'Release v')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -46,6 +53,21 @@ jobs:
           name: Test build
           prerelease: true
           files: '*.tgz'
+
+      # The rolling release would otherwise collect one tarball per push, making
+      # it easy to install a stale one by mistake. Keep only what this run built.
+      - name: Prune older test-build assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          KEEP='${{ steps.pack.outputs.tarball }}'
+          gh release view test-build --json assets -q '.assets[].name' > assets.txt
+          while read -r asset; do
+            [ -z "$asset" ] && continue
+            [ "$asset" = "$KEEP" ] && continue
+            echo "deleting $asset"
+            gh release delete-asset test-build "$asset" --yes
+          done < assets.txt
 
       - name: Install command
         run: |
