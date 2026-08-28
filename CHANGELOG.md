@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.11.5] - 2026-08-28
+
 ### Changed
 - The test-build workflow's install one-liner for private repositories now reads
   the token from a header file rather than interpolating it into the command, so
