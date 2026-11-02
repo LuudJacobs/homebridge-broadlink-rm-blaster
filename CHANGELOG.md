@@ -15,18 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: a test build is now named after the version it was built from, instead of a
   patch above it.
 
-### Security
-- Remaining development-only advisory cleared by overriding minimatch to 11.
-  npm audit reports no vulnerabilities.
-
 ### Fixed
 - Version in the README title, left at 1.11.5 by the 1.11.6 release.
 
 ### Security
-- Patched versions of three transitive development dependencies pulled into the
-  lockfile: ip-address, js-yaml and brace-expansion. Nothing that reaches an
-  installed plugin: the lockfile is not published, and the published dependency
-  range already allowed the patched version.
+- Every known advisory in the dependency tree cleared; npm audit reports none.
+  Patched versions of ip-address, js-yaml and brace-expansion pulled into the
+  lockfile, rimraf dropped, and minimatch overridden to 11.
+- All of it was development and CI only. The lockfile is not published, and the
+  published dependency ranges already allowed the patched versions, so nothing
+  here changes what an installed plugin resolves.
 
 ## [1.11.6] - 2026-09-06
 
