@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+- Development toolchain: eslint 8 to 10 with flat config, the typescript-eslint 8
+  meta-package in place of the separate parser and plugin, and rimraf dropped in
+  favour of the Node builtin. No effect on the published plugin.
+- CI: a test build is now named after the version it was built from, instead of a
+  patch above it.
+
 ### Fixed
 - Version in the README title, left at 1.11.5 by the 1.11.6 release.
 
