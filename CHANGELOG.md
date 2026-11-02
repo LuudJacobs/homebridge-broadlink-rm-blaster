@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI: a test build is now named after the version it was built from, instead of a
   patch above it.
 
+### Security
+- Remaining development-only advisory cleared by overriding minimatch to 11.
+  npm audit reports no vulnerabilities.
+
 ### Fixed
 - Version in the README title, left at 1.11.5 by the 1.11.6 release.
 
