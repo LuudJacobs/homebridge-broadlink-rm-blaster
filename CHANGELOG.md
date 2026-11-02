@@ -6,12 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [1.11.7] - 2026-11-02
+
 ### Fixed
 - Version in the README title, left at 1.11.5 by the 1.11.6 release.
 
 ### Security
 - Patched versions of three transitive development dependencies pulled into the
-  lockfile: ip-address, js-yaml and brace-expansion.
+  lockfile: ip-address, js-yaml and brace-expansion. Nothing that reaches an
+  installed plugin: the lockfile is not published, and the published dependency
+  range already allowed the patched version.
 
 ## [1.11.6] - 2026-09-06
 
